@@ -222,8 +222,32 @@ input, textarea, select { font-family: var(--font-primary); color: var(--text-pr
 }
 
 @media (max-width: 1024px) {
-  .sidebar { transform: translateX(-100%); }
-  .sidebar.open { transform: translateX(0); box-shadow: var(--shadow-xl); }
+  .sidebar {
+    width: min(320px, 84vw);
+    transform: translateX(-100%);
+    z-index: 1000;
+  }
+  .sidebar.open {
+    transform: translateX(0);
+    box-shadow: 0 0 50px rgba(0, 0, 0, 0.4);
+  }
+}
+
+.sidebar-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  z-index: 990;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--transition-base);
+}
+
+.sidebar-overlay.visible {
+  opacity: 1;
+  pointer-events: auto;
 }
 
 .sidebar-header {
@@ -2693,6 +2717,163 @@ input, textarea, select { font-family: var(--font-primary); color: var(--text-pr
   to { transform: rotate(360deg); }
 }
 
+/* ============================================================
+   MOBILE BOTTOM NAVIGATION BAR
+   ============================================================ */
 
+.mobile-nav {
+  display: none;
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: calc(60px + env(safe-area-inset-bottom, 14px));
+  background: var(--bg-secondary);
+  border-top: 1px solid var(--border-medium);
+  box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.08);
+  z-index: 500;
+  padding-bottom: env(safe-area-inset-bottom, 14px);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+}
 
+@media (max-width: 1024px) {
+  .mobile-nav {
+    display: block;
+  }
+}
 
+.mobile-nav-items {
+  display: flex;
+  height: 60px;
+  align-items: center;
+  justify-content: space-around;
+  padding: 0 4px;
+}
+
+.mobile-nav-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  flex: 1;
+  height: 100%;
+  color: var(--text-tertiary);
+  font-size: 0.7rem;
+  font-weight: 600;
+  position: relative;
+  transition: all var(--transition-fast);
+  -webkit-tap-highlight-color: transparent;
+  cursor: pointer;
+}
+
+.mobile-nav-item svg {
+  width: 20px;
+  height: 20px;
+  stroke-width: 2px;
+  transition: transform var(--transition-fast);
+}
+
+.mobile-nav-item.active {
+  color: var(--accent);
+}
+
+.mobile-nav-item.active svg {
+  transform: translateY(-2px);
+}
+
+.mobile-nav-item .item-badge {
+  position: absolute;
+  top: 8px;
+  right: calc(50% - 14px);
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--accent);
+}
+
+/* ============================================================
+   RESPONSIVE ENHANCEMENTS (PHONE & TABLET)
+   ============================================================ */
+
+@media (max-width: 768px) {
+  /* Navbar */
+  .navbar {
+    height: 56px;
+    padding: 0 12px;
+  }
+
+  .navbar-left {
+    gap: 8px;
+  }
+
+  .navbar-title {
+    font-size: 0.92rem;
+    font-weight: 700;
+  }
+
+  .navbar-search {
+    display: none; /* Accessible in full view / drawer */
+  }
+
+  /* Feed & Posts */
+  .app-content {
+    padding: 14px 10px 80px !important;
+  }
+
+  .feed-title {
+    font-size: 1.3rem;
+  }
+
+  .feed-subtitle {
+    font-size: 0.78rem;
+    line-height: 1.4;
+  }
+
+  .create-post-trigger {
+    padding: 10px 14px;
+    border-radius: var(--radius-md);
+    margin-bottom: 12px;
+  }
+
+  .create-post-trigger .placeholder-text {
+    font-size: 0.8rem;
+  }
+
+  .post-card {
+    padding: 14px 12px;
+    border-radius: var(--radius-md);
+    margin-bottom: 10px;
+  }
+
+  .post-content {
+    font-size: 0.88rem;
+    line-height: 1.5;
+  }
+
+  .feed-filters {
+    gap: 6px;
+    padding-bottom: 6px;
+    margin-bottom: 12px;
+  }
+
+  .chip {
+    padding: 6px 12px;
+    font-size: 0.76rem;
+    font-weight: 600;
+  }
+
+  /* Modals */
+  .modal {
+    width: calc(100% - 20px) !important;
+    max-height: 90vh !important;
+    padding: 18px 14px !important;
+    border-radius: var(--radius-lg) !important;
+    margin: auto !important;
+  }
+
+  .auth-card {
+    padding: 20px 16px !important;
+  }
+}
