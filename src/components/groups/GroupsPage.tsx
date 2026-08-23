@@ -1,18 +1,21 @@
 // ============================================================
-// Groups & Campus Hubs Page — Professional Icons & Responsive Design
+// Groups & Campus Hubs — Mobile-First Community & Chat Rooms
 // ============================================================
 
 import { useState } from 'react';
-import { Users, Pin, Calendar, MessageCircle, ArrowLeft, Plus, Send, Compass } from 'lucide-react';
+import {
+  Users, MessageCircle, Pin, Calendar, Plus,
+  ArrowLeft, Send, Compass
+} from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import CreateGroupModal from './CreateGroupModal';
-import type { Group } from '../../types';
 
 const GROUP_FILTERS = [
-  { id: 'all', label: 'All' },
+  { id: 'all', label: 'All Hubs' },
   { id: 'academic', label: 'Academic' },
-  { id: 'hobby', label: 'Hobby' },
+  { id: 'club', label: 'Clubs' },
   { id: 'campus-life', label: 'Campus Life' },
+  { id: 'hobby', label: 'Hobbies & Gaming' },
   { id: 'sports', label: 'Sports' },
 ];
 
@@ -25,96 +28,97 @@ export default function GroupsPage() {
     filter === 'all' ? true : g.category === filter
   );
 
-  // ── Group Detail View ───────────────────────────────────
-  if (state.selectedGroupId) {
-    const group = state.groups.find(g => g.id === state.selectedGroupId);
-    if (!group) return null;
+  const selectedGroup = state.groups.find(g => g.id === state.selectedGroupId);
 
-    const handleSendMessage = () => {
-      if (!chatText.trim()) return;
-      dispatch({
-        type: 'SEND_GROUP_MESSAGE',
-        payload: { groupId: group.id, content: chatText },
-      });
-      setChatText('');
-    };
+  const handleSendMessage = () => {
+    if (!chatText.trim() || !selectedGroup) return;
+    dispatch({
+      type: 'SEND_GROUP_MESSAGE',
+      payload: {
+        groupId: selectedGroup.id,
+        content: chatText.trim(),
+      },
+    });
+    setChatText('');
+  };
+
+  // ── 1. Active Hub Detail & Chat View ───────────────────────
+  if (selectedGroup) {
+    const group = selectedGroup;
 
     return (
-      <div className="app-content" style={{ maxWidth: 860, margin: '0 auto', padding: '16px 12px' }}>
-        <button
-          className="btn btn-ghost btn-sm btn-pill"
-          onClick={() => dispatch({ type: 'SELECT_GROUP', payload: null })}
-          style={{ marginBottom: 16 }}
-        >
-          <ArrowLeft size={16} /> Back to Hubs
-        </button>
+      <div className="group-detail-container">
+        {/* Top Sticky Header */}
+        <div className="group-detail-nav">
+          <button
+            className="btn btn-ghost btn-sm btn-pill"
+            onClick={() => dispatch({ type: 'SELECT_GROUP', payload: null })}
+          >
+            <ArrowLeft size={16} /> Hubs
+          </button>
+          <span className="group-nav-title">{group.name}</span>
+          <span className="group-nav-members">{group.memberCount} members</span>
+        </div>
 
-        {/* Group Header */}
-        <div className="group-detail-header" style={{ background: group.coverGradient, borderRadius: 'var(--radius-lg)', padding: '28px 24px', color: 'white', marginBottom: 20 }}>
-          <div className="group-detail-content">
-            <div className="group-detail-icon" style={{ background: 'rgba(255,255,255,0.2)', width: 52, height: 52, borderRadius: 'var(--radius-md)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 12 }}>
-              <Users size={28} />
-            </div>
-            <h1 className="group-detail-name" style={{ fontSize: '1.4rem', fontWeight: 800, color: 'white' }}>{group.name}</h1>
-            <p className="group-detail-desc" style={{ color: 'rgba(255,255,255,0.9)', maxWidth: 600, fontSize: '0.9rem' }}>{group.description}</p>
-            <div className="group-detail-stats" style={{ display: 'flex', gap: 16, marginTop: 12, fontSize: '0.82rem' }}>
-              <div className="group-detail-stat" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                <Users size={16} /> {group.memberCount} members
+        {/* Hero Card */}
+        <div className="group-hero-banner" style={{ background: group.coverGradient }}>
+          <div className="group-hero-icon">
+            <Users size={24} />
+          </div>
+          <div className="group-hero-info">
+            <h2>{group.name}</h2>
+            <p>{group.description}</p>
+            {group.upcomingEvent && (
+              <div className="group-hero-event">
+                <Calendar size={14} /> <span>{group.upcomingEvent}</span>
               </div>
-              {group.upcomingEvent && (
-                <div className="group-detail-stat" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <Calendar size={16} /> {group.upcomingEvent}
-                </div>
-              )}
-            </div>
+            )}
           </div>
         </div>
 
         {/* Pinned Announcement */}
         {group.pinnedAnnouncement && (
-          <div className="card" style={{ marginBottom: 16, display: 'flex', alignItems: 'flex-start', gap: 12, padding: '14px 18px', borderRadius: 'var(--radius-md)' }}>
-            <Pin size={16} style={{ color: 'var(--color-error)', flexShrink: 0, marginTop: 2 }} />
+          <div className="group-pinned-box">
+            <Pin size={15} className="group-pinned-icon" />
             <div>
-              <div style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--color-error)', marginBottom: 2 }}>Pinned Announcement</div>
-              <div style={{ fontSize: '0.86rem', color: 'var(--text-primary)' }}>{group.pinnedAnnouncement}</div>
+              <span className="group-pinned-label">Pinned Announcement</span>
+              <p>{group.pinnedAnnouncement}</p>
             </div>
           </div>
         )}
 
-        {/* Group Chat */}
-        <div className="card" style={{ padding: '18px', borderRadius: 'var(--radius-lg)' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
-            <MessageCircle size={18} style={{ color: 'var(--accent)' }} />
-            <span style={{ fontWeight: 700, fontSize: '1rem' }}>Hub Group Chat</span>
+        {/* Full-Height Chat Stream */}
+        <div className="group-chat-card">
+          <div className="group-chat-header">
+            <MessageCircle size={16} />
+            <span>Live Hub Chat</span>
           </div>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 12, maxHeight: 380, overflowY: 'auto', marginBottom: 16 }}>
-            {group.recentMessages && group.recentMessages.length > 0 ? group.recentMessages.map(msg => (
-              <div key={msg.id} style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
-                <div className="user-avatar" style={{ width: 32, height: 32, fontSize: '0.85rem', background: 'var(--accent-bg-strong)', color: 'var(--accent)', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <Users size={16} />
-                </div>
-                <div>
-                  <div style={{ fontSize: '0.82rem', fontWeight: 600, color: 'var(--text-primary)' }}>
-                    {msg.senderName}
-                    <span style={{ fontWeight: 400, color: 'var(--text-tertiary)', marginLeft: 8, fontSize: '0.72rem' }}>
-                      {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                    </span>
-                  </div>
-                  <div style={{ fontSize: '0.84rem', color: 'var(--text-secondary)', marginTop: 2 }}>
-                    {msg.content}
+          <div className="group-chat-messages">
+            {group.recentMessages && group.recentMessages.length > 0 ? (
+              group.recentMessages.map(msg => (
+                <div key={msg.id} className="group-msg-item">
+                  <div className="group-msg-avatar">🎓</div>
+                  <div className="group-msg-body">
+                    <div className="group-msg-meta">
+                      <span className="group-msg-author">{msg.senderName}</span>
+                      <span className="group-msg-time">
+                        {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      </span>
+                    </div>
+                    <p className="group-msg-content">{msg.content}</p>
                   </div>
                 </div>
-              </div>
-            )) : (
-              <div style={{ textAlign: 'center', padding: '24px 0', color: 'var(--text-tertiary)', fontSize: '0.84rem' }}>
-                No messages in this hub yet. Say hello to fellow members!
+              ))
+            ) : (
+              <div className="group-chat-empty">
+                No messages yet. Say hello to fellow members!
               </div>
             )}
           </div>
 
-          {/* Chat Input */}
-          <div style={{ display: 'flex', gap: 8 }}>
+          {/* Sticky Input Bar */}
+          <div className="group-chat-input-row">
             <input
               type="text"
               className="chat-input"
@@ -122,15 +126,13 @@ export default function GroupsPage() {
               value={chatText}
               onChange={e => setChatText(e.target.value)}
               onKeyDown={e => e.key === 'Enter' && handleSendMessage()}
-              style={{ flex: 1, borderRadius: 'var(--radius-md)', padding: '10px 14px' }}
             />
             <button
               className="btn btn-primary btn-pill btn-sm"
               onClick={handleSendMessage}
               disabled={!chatText.trim()}
-              style={{ display: 'flex', alignItems: 'center', gap: 6 }}
             >
-              <Send size={15} /> Send
+              <Send size={15} />
             </button>
           </div>
         </div>
@@ -138,30 +140,31 @@ export default function GroupsPage() {
     );
   }
 
-  // ── Groups Grid View ────────────────────────────────────
+  // ── 2. Groups Hub Stream (Zero-Scroll Mobile List) ─────────
   return (
-    <div className="app-content" style={{ maxWidth: 860, margin: '0 auto', padding: '16px 12px' }}>
-      <div className="feed-header" style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
+    <div className="groups-hub-container">
+      {/* Header */}
+      <div className="groups-header-row">
         <div>
-          <h1 className="feed-title" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <Compass size={24} style={{ color: 'var(--accent)' }} /> Groups & Campus Hubs
+          <h1 className="groups-title">
+            <Compass size={22} style={{ color: 'var(--accent)' }} /> Campus Hubs
           </h1>
-          <p className="feed-subtitle">Join student-run clubs, connect with your department, and organize activities.</p>
+          <p className="groups-subtitle">Join student-run clubs, sports, and department groups.</p>
         </div>
         <button
           className="btn btn-primary btn-pill btn-sm"
           onClick={() => dispatch({ type: 'TOGGLE_CREATE_GROUP' })}
-          style={{ display: 'flex', alignItems: 'center', gap: 6 }}
         >
-          <Plus size={16} /> Create Hub
+          <Plus size={15} /> Create Hub
         </button>
       </div>
 
-      <div className="feed-filters" style={{ marginBottom: 20 }}>
+      {/* Horizontal Filter Bar */}
+      <div className="groups-filter-scroll">
         {GROUP_FILTERS.map(f => (
           <button
             key={f.id}
-            className={`chip ${filter === f.id ? 'active' : ''}`}
+            className={`filter-pill ${filter === f.id ? 'active' : ''}`}
             onClick={() => setFilter(f.id)}
           >
             {f.label}
@@ -169,22 +172,41 @@ export default function GroupsPage() {
         ))}
       </div>
 
+      {/* Group Cards Grid */}
       {filteredGroups.length > 0 ? (
-        <div className="groups-grid">
-          {filteredGroups.map((group, i) => (
-            <GroupCard key={group.id} group={group} index={i} />
+        <div className="groups-cards-grid">
+          {filteredGroups.map(group => (
+            <div
+              key={group.id}
+              className="group-card-modern"
+              onClick={() => dispatch({ type: 'SELECT_GROUP', payload: group.id })}
+            >
+              <div className="group-card-cover" style={{ background: group.coverGradient }}>
+                <Users size={24} />
+              </div>
+              <div className="group-card-body">
+                <div className="group-card-header">
+                  <h3 className="group-card-name">{group.name}</h3>
+                  <span className="group-card-count">{group.memberCount} members</span>
+                </div>
+                <p className="group-card-desc">{group.description}</p>
+                <div className="group-card-action">
+                  <span className="group-enter-badge">Enter Hub Chat →</span>
+                </div>
+              </div>
+            </div>
           ))}
         </div>
       ) : (
-        <div className="empty-state">
-          <div className="empty-state-icon" style={{ background: 'var(--accent-bg-strong)', color: 'var(--accent)', width: 56, height: 56, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 12px' }}>
+        <div className="feed-empty-state">
+          <div className="feed-empty-icon">
             <Users size={28} />
           </div>
-          <div className="empty-state-title">No Campus Hubs Found</div>
-          <div className="empty-state-desc">Be the first student to create a hub on your campus!</div>
+          <h3>No Campus Hubs Found</h3>
+          <p>Be the first student to create a hub on campus!</p>
           <button
             className="btn btn-primary btn-pill"
-            style={{ marginTop: 16 }}
+            style={{ marginTop: 14 }}
             onClick={() => dispatch({ type: 'TOGGLE_CREATE_GROUP' })}
           >
             <Plus size={16} /> Create First Hub
@@ -192,50 +214,8 @@ export default function GroupsPage() {
         </div>
       )}
 
-      {/* Modal */}
+      {/* Create Modal */}
       {state.showCreateGroup && <CreateGroupModal />}
-    </div>
-  );
-}
-
-function GroupCard({ group, index }: { group: Group; index: number }) {
-  const { dispatch } = useApp();
-
-  return (
-    <div
-      className="group-card"
-      style={{ animationDelay: `${index * 0.06}s`, borderRadius: 'var(--radius-lg)' }}
-      onClick={() => dispatch({ type: 'SELECT_GROUP', payload: group.id })}
-    >
-      <div className="group-cover" style={{ background: group.coverGradient, height: 80, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white' }}>
-        <Users size={32} />
-      </div>
-      <div className="group-info" style={{ padding: '14px' }}>
-        <div className="group-name" style={{ fontSize: '1rem', fontWeight: 700 }}>{group.name}</div>
-        <div className="group-desc" style={{ fontSize: '0.82rem', color: 'var(--text-secondary)' }}>{group.description}</div>
-      </div>
-      {group.tags && group.tags.length > 0 && (
-        <div className="group-tags" style={{ padding: '0 14px' }}>
-          {group.tags.slice(0, 3).map(t => (
-            <span key={t} className="group-tag">#{t}</span>
-          ))}
-        </div>
-      )}
-      <div className="group-footer" style={{ padding: '12px 14px', borderTop: '1px solid var(--border-light)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <div className="group-members" style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)', display: 'flex', alignItems: 'center', gap: 4 }}>
-          <Users size={14} /> {group.memberCount} members
-        </div>
-        <button
-          className={`group-join-btn ${group.isJoined ? 'joined' : 'join'}`}
-          onClick={e => {
-            e.stopPropagation();
-            dispatch({ type: 'JOIN_GROUP', payload: group.id });
-          }}
-          style={{ borderRadius: 'var(--radius-pill)', fontSize: '0.72rem', padding: '4px 10px' }}
-        >
-          {group.isJoined ? 'Joined' : 'Join'}
-        </button>
-      </div>
     </div>
   );
 }

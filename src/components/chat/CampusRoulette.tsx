@@ -1,6 +1,6 @@
 // ============================================================
 // Random Student Chat — High-Capacity 1-on-1 Campus Matchmaking
-// Scalable Peer Coordination with Professional Icons & Aesthetics
+// Mobile-First Zero-Scroll Ergonomics & Scalable WebSockets
 // ============================================================
 
 import { useState, useRef, useEffect, useCallback } from 'react';
@@ -16,15 +16,15 @@ import type { ChatMessage, AnonMatch } from '../../types';
 
 const SEARCHING_TIPS = [
   'Scanning active student hubs across universities...',
-  'Select interest tags above to match with students of similar vibes.',
+  'Select interest vibes to match with similar students.',
   'Your identity stays 100% anonymous until both sides choose to reveal.',
   'Matching you with a student from another university...',
 ];
 
 const QUICK_STARTERS = [
-  'What major are you in and which uni?',
+  'What major & uni are you in?',
   'Best food spot on campus?',
-  'Studying or procrastinating right now?',
+  'Studying or procrastinating?',
   'What music are you listening to?',
 ];
 
@@ -46,7 +46,6 @@ export default function RandomChat() {
   const claimedPeersRef = useRef<Set<string>>(new Set());
 
   const me = state.currentUser || CURRENT_USER;
-  // Guarantees every single browser tab has a 100% unique session ID
   const mySessionId = useRef(`sess_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`).current;
   const myAnonProfile = useRef(generateAnonName()).current;
 
@@ -58,15 +57,23 @@ export default function RandomChat() {
     scrollToBottom();
   }, [activeMatch?.messages, scrollToBottom]);
 
-  // Cycle tips while searching
+  // Rotate tips when searching
   useEffect(() => {
-    if (activeMatch?.status === 'searching') {
-      const interval = setInterval(() => {
-        setTipIndex(prev => (prev + 1) % SEARCHING_TIPS.length);
-      }, 2400);
-      return () => clearInterval(interval);
-    }
+    if (!activeMatch || activeMatch.status !== 'searching') return;
+    const interval = setInterval(() => {
+      setTipIndex(prev => (prev + 1) % SEARCHING_TIPS.length);
+    }, 2800);
+    return () => clearInterval(interval);
   }, [activeMatch?.status]);
+
+  // Clean up channels on unmount
+  useEffect(() => {
+    return () => {
+      if (lobbyChannelRef.current) supabase.removeChannel(lobbyChannelRef.current);
+      if (roomChannelRef.current) supabase.removeChannel(roomChannelRef.current);
+      if (heartbeatIntervalRef.current) clearInterval(heartbeatIntervalRef.current);
+    };
+  }, []);
 
   const toggleInterest = (tag: string) => {
     setSelectedInterests(prev =>
@@ -74,300 +81,243 @@ export default function RandomChat() {
     );
   };
 
-  // ── Dedicated Room Connection ─────────────────────────────────
-  const connectToRoom = useCallback((roomId: string, peerId: string, peerPseudonym: string, _peerEmoji: string, interestTags: string[]) => {
-    if (isMatchingRef.current) return;
-    isMatchingRef.current = true;
-
-    // Clear lobby heartbeat and channels
-    if (heartbeatIntervalRef.current) {
-      clearInterval(heartbeatIntervalRef.current);
-      heartbeatIntervalRef.current = null;
-    }
-    if (lobbyChannelRef.current) {
-      supabase.removeChannel(lobbyChannelRef.current);
-      lobbyChannelRef.current = null;
-    }
+  // Join a dedicated 1-on-1 room
+  const joinChatRoom = useCallback((roomId: string, peerId: string, peerPseudonym: string, peerEmoji: string) => {
     if (roomChannelRef.current) {
       supabase.removeChannel(roomChannelRef.current);
       roomChannelRef.current = null;
     }
 
-    const matchData: AnonMatch = {
+    if (lobbyChannelRef.current) {
+      supabase.removeChannel(lobbyChannelRef.current);
+      lobbyChannelRef.current = null;
+    }
+    if (heartbeatIntervalRef.current) {
+      clearInterval(heartbeatIntervalRef.current);
+      heartbeatIntervalRef.current = null;
+    }
+
+    const matchedState: AnonMatch = {
       id: roomId,
       peerId,
       peerPseudonym,
-      peerEmoji: '🎓',
+      peerEmoji,
       matchedAt: new Date().toISOString(),
-      interestTags,
+      interestTags: selectedInterests,
+      status: 'chatting',
       messages: [
         {
           id: `sys_${Date.now()}`,
           senderId: 'system',
-          content: `You are connected with ${peerPseudonym}! Your chat is private and encrypted. Say hello!`,
+          content: `⚡ Connected with ${peerPseudonym}! You are both 100% anonymous.`,
           timestamp: new Date().toISOString(),
           type: 'system',
         },
       ],
-      status: 'chatting',
       revealRequestSent: false,
       revealRequestReceived: false,
     };
 
-    dispatch({ type: 'MATCH_FOUND', payload: matchData });
+    dispatch({ type: 'MATCH_FOUND', payload: matchedState });
 
-    // Join dedicated room channel
-    const room = supabase.channel(`campus_live_room_${roomId}`, {
-      config: { broadcast: { ack: true } },
+    const channel = supabase.channel(`room:${roomId}`, {
+      config: { broadcast: { self: false } },
     });
-    roomChannelRef.current = room;
 
-    room
-      .on('broadcast', { event: 'CHAT_MSG' }, ({ payload }) => {
-        if (payload.sessionId !== mySessionId) {
-          dispatch({ type: 'RECEIVE_CHAT_MESSAGE', payload });
-        }
+    channel
+      .on('broadcast', { event: 'CHAT_MSG' }, ({ payload }: { payload: any }) => {
+        dispatch({
+          type: 'RECEIVE_CHAT_MESSAGE',
+          payload: {
+            id: payload.id || `msg_${Date.now()}`,
+            senderId: payload.senderId,
+            content: payload.content,
+            timestamp: payload.timestamp || new Date().toISOString(),
+            type: payload.type || 'text',
+          },
+        });
       })
-      .on('broadcast', { event: 'ICEBREAKER' }, ({ payload }) => {
-        dispatch({ type: 'RECEIVE_CHAT_MESSAGE', payload });
+      .on('broadcast', { event: 'REVEAL_REQUEST' }, () => {
+        setPeerRevealRequested(true);
       })
-      .on('broadcast', { event: 'REVEAL_REQ' }, ({ payload }) => {
-        if (payload.sessionId !== mySessionId) {
-          setPeerRevealRequested(true);
-        }
-      })
-      .on('broadcast', { event: 'REVEAL_ACCEPT' }, () => {
+      .on('broadcast', { event: 'REVEAL_ACCEPTED' }, () => {
         dispatch({ type: 'ACCEPT_REVEAL' });
       })
-      .on('broadcast', { event: 'PEER_LEFT' }, ({ payload }) => {
-        if (payload.sessionId !== mySessionId) {
-          const sysMsg: ChatMessage = {
-            id: `left_${Date.now()}`,
+      .on('broadcast', { event: 'PEER_LEFT' }, () => {
+        dispatch({
+          type: 'RECEIVE_CHAT_MESSAGE',
+          payload: {
+            id: `sys_left_${Date.now()}`,
             senderId: 'system',
-            content: `${peerPseudonym} left the chat session.`,
+            content: 'Peer has left the chat session.',
             timestamp: new Date().toISOString(),
             type: 'system',
-          };
-          dispatch({ type: 'RECEIVE_CHAT_MESSAGE', payload: sysMsg });
-        }
+          },
+        });
       })
       .subscribe();
-  }, [mySessionId, dispatch]);
 
-  // ── High-Concurrency Matchmaking Engine ───────────────────────
-  const handleStartMatch = useCallback((specificRoomCode?: string) => {
+    roomChannelRef.current = channel;
+  }, [dispatch]);
+
+  // Master Matchmaking Engine
+  const handleStartMatch = useCallback(() => {
     isMatchingRef.current = false;
-    setPeerRevealRequested(false);
     claimedPeersRef.current.clear();
+    setPeerRevealRequested(false);
+
+    if (lobbyChannelRef.current) {
+      supabase.removeChannel(lobbyChannelRef.current);
+      lobbyChannelRef.current = null;
+    }
+    if (heartbeatIntervalRef.current) {
+      clearInterval(heartbeatIntervalRef.current);
+      heartbeatIntervalRef.current = null;
+    }
+
     dispatch({ type: 'START_MATCHING' });
 
-    // 1. Direct Room Code Match (Friend Code)
-    if (specificRoomCode && specificRoomCode.trim()) {
-      const cleanCode = specificRoomCode.trim().toUpperCase();
-      const roomId = `friend_room_${cleanCode}`;
-      connectToRoom(roomId, `peer_${cleanCode}`, 'Campus Friend', '🎓', selectedInterests);
-      return;
-    }
-
-    // 2. High-Capacity Automatic Matchmaking Lobby
-    if (heartbeatIntervalRef.current) {
-      clearInterval(heartbeatIntervalRef.current);
-      heartbeatIntervalRef.current = null;
-    }
-    if (lobbyChannelRef.current) {
-      supabase.removeChannel(lobbyChannelRef.current);
-      lobbyChannelRef.current = null;
-    }
-
-    const lobby = supabase.channel('campus_roulette_lobby_v5', {
-      config: {
-        broadcast: { ack: true },
-        presence: { key: mySessionId },
-      },
+    const lobbyName = 'campus_roulette_lobby';
+    const lobby = supabase.channel(lobbyName, {
+      config: { broadcast: { self: false } },
     });
 
-    lobbyChannelRef.current = lobby;
+    const attemptPairing = (peerSessionId: string, peerPseudonym: string, peerEmoji: string) => {
+      if (isMatchingRef.current) return;
+      if (peerSessionId === mySessionId) return;
+      if (claimedPeersRef.current.has(peerSessionId)) return;
 
-    // Pulse listener with atomic pair claiming for 50+ users
-    lobby
-      .on('broadcast', { event: 'SEARCH_PULSE' }, async ({ payload }) => {
-        if (isMatchingRef.current) return;
-        if (payload.sessionId !== mySessionId && !claimedPeersRef.current.has(payload.sessionId)) {
-          // Deterministic coordinator: lowest session ID initiates pairing
-          if (mySessionId < payload.sessionId) {
-            claimedPeersRef.current.add(payload.sessionId);
-            const roomId = `auto_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
-            
-            // Broadcast targeted pairing payload
-            await lobby.send({
-              type: 'broadcast',
-              event: 'MATCH_PAIRED',
-              payload: {
-                sessionA: mySessionId,
-                sessionB: payload.sessionId,
-                roomId,
-                userAPseudonym: myAnonProfile.name,
-                userAEmoji: '🎓',
-                userBPseudonym: payload.pseudonym,
-                userBEmoji: '🎓',
-                interests: selectedInterests,
-              },
-            });
+      const myTurnToPropose = mySessionId > peerSessionId;
 
-            // Coordinator immediately connects for itself
-            connectToRoom(roomId, payload.sessionId, payload.pseudonym, '🎓', selectedInterests);
-          }
-        }
-      })
-      // Pair Found Event Listener
-      .on('broadcast', { event: 'MATCH_PAIRED' }, ({ payload }) => {
-        if (isMatchingRef.current) return;
-        if (payload.sessionB === mySessionId) {
-          connectToRoom(payload.roomId, payload.sessionA, payload.userAPseudonym, '🎓', payload.interests || []);
-        } else if (payload.sessionA === mySessionId) {
-          connectToRoom(payload.roomId, payload.sessionB, payload.userBPseudonym, '🎓', payload.interests || []);
-        }
-      })
-      .subscribe(async status => {
-        if (status === 'SUBSCRIBED') {
-          // Immediate broadcast pulse
-          await lobby.send({
-            type: 'broadcast',
-            event: 'SEARCH_PULSE',
-            payload: {
-              sessionId: mySessionId,
-              userId: me.id,
-              pseudonym: myAnonProfile.name,
-              interests: selectedInterests,
-            },
-          });
+      if (myTurnToPropose) {
+        isMatchingRef.current = true;
+        claimedPeersRef.current.add(peerSessionId);
+        const uniqueRoomId = `room_${[mySessionId, peerSessionId].sort().join('_')}`;
 
-          // Heartbeat pulse every 1s
-          heartbeatIntervalRef.current = setInterval(async () => {
-            if (isMatchingRef.current) return;
-            await lobby.send({
-              type: 'broadcast',
-              event: 'SEARCH_PULSE',
-              payload: {
-                sessionId: mySessionId,
-                userId: me.id,
-                pseudonym: myAnonProfile.name,
-                interests: selectedInterests,
-              },
-            });
-          }, 1000);
-        }
-      });
-  }, [mySessionId, myAnonProfile, selectedInterests, me.id, dispatch, connectToRoom]);
+        lobby.send({
+          type: 'broadcast',
+          event: 'MATCH_INVITE',
+          payload: {
+            targetSessionId: peerSessionId,
+            senderSessionId: mySessionId,
+            senderPseudonym: myAnonProfile.name,
+            senderEmoji: myAnonProfile.emoji,
+            roomId: uniqueRoomId,
+          },
+        });
 
-  // Cleanup on unmount
-  useEffect(() => {
-    return () => {
-      if (heartbeatIntervalRef.current) {
-        clearInterval(heartbeatIntervalRef.current);
-      }
-      if (lobbyChannelRef.current) {
-        supabase.removeChannel(lobbyChannelRef.current);
-      }
-      if (roomChannelRef.current) {
-        supabase.removeChannel(roomChannelRef.current);
+        joinChatRoom(uniqueRoomId, peerSessionId, peerPseudonym, peerEmoji);
       }
     };
-  }, []);
+
+    lobby
+      .on('broadcast', { event: 'LOOKING_FOR_CHAT' }, ({ payload }: { payload: any }) => {
+        if (!payload || payload.senderSessionId === mySessionId) return;
+        attemptPairing(payload.senderSessionId, payload.senderPseudonym, payload.senderEmoji);
+      })
+      .on('broadcast', { event: 'MATCH_INVITE' }, ({ payload }: { payload: any }) => {
+        if (!payload || payload.targetSessionId !== mySessionId) return;
+        if (isMatchingRef.current) return;
+
+        isMatchingRef.current = true;
+        joinChatRoom(payload.roomId, payload.senderSessionId, payload.senderPseudonym, payload.senderEmoji);
+      })
+      .subscribe((status: string) => {
+        if (status === 'SUBSCRIBED') {
+          const broadcastPresence = () => {
+            lobby.send({
+              type: 'broadcast',
+              event: 'LOOKING_FOR_CHAT',
+              payload: {
+                senderSessionId: mySessionId,
+                senderPseudonym: myAnonProfile.name,
+                senderEmoji: myAnonProfile.emoji,
+                interests: selectedInterests,
+              },
+            });
+          };
+
+          broadcastPresence();
+          heartbeatIntervalRef.current = setInterval(broadcastPresence, 1800);
+        }
+      });
+
+    lobbyChannelRef.current = lobby;
+  }, [mySessionId, myAnonProfile, selectedInterests, dispatch, joinChatRoom]);
 
   const handleCancelSearch = () => {
-    isMatchingRef.current = false;
+    if (lobbyChannelRef.current) {
+      supabase.removeChannel(lobbyChannelRef.current);
+      lobbyChannelRef.current = null;
+    }
     if (heartbeatIntervalRef.current) {
       clearInterval(heartbeatIntervalRef.current);
       heartbeatIntervalRef.current = null;
-    }
-    if (lobbyChannelRef.current) {
-      lobbyChannelRef.current.untrack();
-      supabase.removeChannel(lobbyChannelRef.current);
-      lobbyChannelRef.current = null;
     }
     dispatch({ type: 'END_CHAT' });
   };
 
   const handleSendMessage = (textToSend?: string) => {
-    const text = textToSend || chatInput;
-    if (!text.trim() || !activeMatch) return;
+    const text = (textToSend || chatInput).trim();
+    if (!text || !activeMatch || !roomChannelRef.current) return;
 
-    const msg: ChatMessage = {
-      id: `msg_${Date.now()}`,
+    const msgId = `msg_${Date.now()}`;
+    const newMsg: ChatMessage = {
+      id: msgId,
       senderId: mySessionId,
-      content: text.trim(),
+      content: text,
       timestamp: new Date().toISOString(),
       type: 'text',
     };
 
-    dispatch({ type: 'SEND_CHAT_MESSAGE', payload: text.trim() });
-
-    if (roomChannelRef.current) {
-      roomChannelRef.current.send({
-        type: 'broadcast',
-        event: 'CHAT_MSG',
-        payload: { ...msg, sessionId: mySessionId },
-      });
-    }
-
+    dispatch({ type: 'SEND_CHAT_MESSAGE', payload: text });
     if (!textToSend) setChatInput('');
-  };
 
-  const handleReveal = () => {
-    dispatch({ type: 'SEND_REVEAL_REQUEST' });
-    setShowRevealModal(false);
-
-    if (roomChannelRef.current) {
-      roomChannelRef.current.send({
-        type: 'broadcast',
-        event: 'REVEAL_REQ',
-        payload: {
-          sessionId: mySessionId,
-          profile: {
-            id: me.id,
-            displayName: me.displayName,
-            avatar: '🎓',
-            major: me.major,
-            username: me.username,
-          },
-        },
-      });
-    }
-  };
-
-  const handleAcceptPeerReveal = () => {
-    dispatch({ type: 'ACCEPT_REVEAL' });
-    setPeerRevealRequested(false);
-
-    if (roomChannelRef.current) {
-      roomChannelRef.current.send({
-        type: 'broadcast',
-        event: 'REVEAL_ACCEPT',
-        payload: { sessionId: mySessionId },
-      });
-    }
+    roomChannelRef.current.send({
+      type: 'broadcast',
+      event: 'CHAT_MSG',
+      payload: newMsg,
+    });
   };
 
   const handleNewIcebreaker = () => {
-    const icebreaker = ICEBREAKERS[Math.floor(Math.random() * ICEBREAKERS.length)];
+    if (!roomChannelRef.current || !activeMatch) return;
+    const q = ICEBREAKERS[Math.floor(Math.random() * ICEBREAKERS.length)];
     const msg: ChatMessage = {
       id: `ice_${Date.now()}`,
       senderId: 'system',
-      content: icebreaker,
+      content: q,
       timestamp: new Date().toISOString(),
       type: 'icebreaker',
-      isIcebreaker: true,
     };
     dispatch({ type: 'RECEIVE_CHAT_MESSAGE', payload: msg });
+    roomChannelRef.current.send({
+      type: 'broadcast',
+      event: 'CHAT_MSG',
+      payload: msg,
+    });
+  };
 
-    if (roomChannelRef.current) {
-      roomChannelRef.current.send({
-        type: 'broadcast',
-        event: 'ICEBREAKER',
-        payload: msg,
-      });
-    }
+  const handleSendRevealRequest = () => {
+    if (!roomChannelRef.current || !activeMatch) return;
+    roomChannelRef.current.send({
+      type: 'broadcast',
+      event: 'REVEAL_REQUEST',
+      payload: { senderSessionId: mySessionId },
+    });
+    dispatch({ type: 'SEND_REVEAL_REQUEST' });
+    setShowRevealModal(false);
+  };
+
+  const handleAcceptPeerReveal = () => {
+    if (!roomChannelRef.current || !activeMatch) return;
+    roomChannelRef.current.send({
+      type: 'broadcast',
+      event: 'REVEAL_ACCEPTED',
+      payload: { senderSessionId: mySessionId },
+    });
+    dispatch({ type: 'ACCEPT_REVEAL' });
+    setPeerRevealRequested(false);
   };
 
   const handleSkip = () => {
@@ -396,126 +346,109 @@ export default function RandomChat() {
     setTimeout(() => setCopiedLink(false), 2500);
   };
 
-  // ── Idle / Search State ─────────────────────────────────
+  // ── 1. Idle / Search State (Zero-Scroll Mobile Layout) ──────
   if (!activeMatch || activeMatch.status === 'searching') {
     const isSearching = activeMatch?.status === 'searching';
 
     return (
-      <div className="app-content" style={{ maxWidth: 720, margin: '0 auto', padding: '16px 12px' }}>
-        <div className="match-container">
-          {/* Status Header Badge */}
-          <div className="match-badge-pill">
-            <span className="dot" />
+      <div className="roulette-screen-container">
+        <div className="roulette-compact-card">
+          {/* Status Badge */}
+          <div className="roulette-status-badge">
+            <span className={`roulette-status-dot ${isSearching ? 'pulsing' : ''}`} />
             <span>{isSearching ? 'Live Matchmaking Active' : '100% Anonymous & Private'}</span>
           </div>
 
-          {/* Radar Animation Area */}
-          <div className={`match-radar ${isSearching ? 'active-searching' : ''}`}>
-            <div className="radar-circle" />
-            <div className="radar-circle" />
-            <div className="radar-circle" />
-            <div className="radar-circle" />
-            {isSearching && (
-              <>
-                <div className="radar-sweep" />
-                <div className="radar-dot" style={{ top: '28%', left: '62%', animationDelay: '0.3s' }} />
-                <div className="radar-dot" style={{ top: '68%', left: '32%', animationDelay: '1.1s' }} />
-                <div className="radar-dot" style={{ top: '42%', left: '76%', animationDelay: '0.7s' }} />
-              </>
-            )}
-            <div className="radar-center" style={{ background: 'var(--accent-bg-strong)', color: 'var(--accent)' }}>
-              {isSearching ? (
-                <Zap size={28} className="radar-icon-spin" />
-              ) : (
-                <Sparkles size={28} />
-              )}
+          {/* Compact Radar */}
+          <div className={`roulette-mini-radar ${isSearching ? 'searching' : ''}`}>
+            <div className="mini-radar-ring ring-1" />
+            <div className="mini-radar-ring ring-2" />
+            {isSearching && <div className="mini-radar-sweep" />}
+            <div className="mini-radar-center">
+              {isSearching ? <Zap size={22} className="spin" /> : <Sparkles size={22} />}
             </div>
           </div>
 
-          <h1 className="match-title">
-            {isSearching ? 'Matching with a university student...' : 'Random Student Chat'}
+          {/* Title & Subtitle */}
+          <h1 className="roulette-compact-title">
+            {isSearching ? 'Matching with a student...' : 'Random Student Chat'}
           </h1>
-          <p className="match-subtitle">
+          <p className="roulette-compact-desc">
             {isSearching
               ? SEARCHING_TIPS[tipIndex]
-              : 'Chat 1-on-1 anonymously in real-time with students across universities. Zero personal data shared unless you both agree to reveal.'}
+              : 'Chat 1-on-1 anonymously in real-time with students across universities.'}
           </p>
 
-          {/* Global Match Mode */}
+          {/* ── BIG PRIMARY CTA BUTTON (Immediately visible in 1 tap!) ── */}
+          {!isSearching ? (
+            <div className="roulette-cta-wrapper">
+              <button
+                className="roulette-master-btn"
+                onClick={() => handleStartMatch()}
+              >
+                <Sparkles size={20} />
+                <span>Start Random Chat</span>
+              </button>
+            </div>
+          ) : (
+            <div className="roulette-searching-actions">
+              <button className="btn btn-secondary btn-pill btn-sm" onClick={handleCancelSearch}>
+                <RotateCcw size={15} /> Cancel Search
+              </button>
+              <button className="btn btn-ghost btn-pill btn-sm" onClick={handleCopyInviteLink}>
+                {copiedLink ? <><Check size={14} /> Link Copied!</> : <><Copy size={14} /> Share Invite Link</>}
+              </button>
+            </div>
+          )}
+
+          {/* ── Single-Row Horizontal Vibe Scroller ── */}
           {!isSearching && (
-            <div className="match-filter-box">
-              <div className="match-filter-header">
-                <span>Choose topic or vibe (optional):</span>
+            <div className="roulette-vibes-section">
+              <div className="roulette-vibes-header">
+                <span>Filter by topic vibe (optional):</span>
                 {selectedInterests.length > 0 && (
-                  <button
-                    className="match-clear-btn"
-                    onClick={() => setSelectedInterests([])}
-                  >
+                  <button onClick={() => setSelectedInterests([])} className="roulette-clear-btn">
                     Clear ({selectedInterests.length})
                   </button>
                 )}
               </div>
 
-              <div className="match-interest-picker">
+              <div className="roulette-vibes-scroll">
                 {INTEREST_TAGS.map(tag => (
                   <button
                     key={tag}
-                    className={`chip ${selectedInterests.includes(tag) ? 'active' : ''}`}
+                    className={`vibe-chip ${selectedInterests.includes(tag) ? 'active' : ''}`}
                     onClick={() => toggleInterest(tag)}
                   >
                     {tag}
                   </button>
                 ))}
               </div>
-
-              <div className="match-actions-row" style={{ marginTop: 16 }}>
-                <button className="btn btn-primary btn-lg btn-pill" onClick={() => handleStartMatch()}>
-                  <Sparkles size={18} />
-                  Start Random Chat
-                </button>
-              </div>
-
-              <div className="match-safety-note" style={{ marginTop: 14 }}>
-                <Shield size={14} />
-                <span>Encrypted live session. Open to verified university students worldwide.</span>
-              </div>
             </div>
           )}
 
-          {/* Searching State Controls */}
-          {isSearching && (
-            <div className="match-searching-controls" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14, marginTop: 12 }}>
-              <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', justifyContent: 'center' }}>
-                <button className="btn btn-secondary btn-pill" onClick={handleCancelSearch}>
-                  <RotateCcw size={16} /> Cancel
-                </button>
-                <button className="btn btn-primary btn-pill" onClick={handleCopyInviteLink}>
-                  {copiedLink ? <><Check size={16} /> Link Copied!</> : <><Copy size={16} /> Share Invite Link</>}
-                </button>
-              </div>
-              <p style={{ fontSize: '0.78rem', color: 'var(--text-tertiary)', margin: 0 }}>
-                Share the link with any student — when both click "Start Random Chat", you match instantly!
-              </p>
-            </div>
-          )}
+          <div className="roulette-security-footer">
+            <Shield size={13} />
+            <span>Encrypted live session. Zero personal data shared.</span>
+          </div>
         </div>
       </div>
     );
   }
 
-  // ── Revealed State ──────────────────────────────────────
+  // ── 2. Revealed State ─────────────────────────────────────
   if (activeMatch.status === 'revealed') {
     return (
-      <div className="app-content" style={{ maxWidth: 600, margin: '0 auto', padding: '16px 12px' }}>
-        <div className="match-container" style={{ minHeight: '55vh' }}>
-          <div className="revealed-hero-avatar" style={{ background: 'var(--accent-bg-strong)', color: 'var(--accent)' }}>
+      <div className="roulette-screen-container">
+        <div className="roulette-compact-card" style={{ padding: '32px 20px' }}>
+          <div className="revealed-hero-avatar" style={{ background: 'var(--accent-bg-strong)', color: 'var(--accent)', margin: '0 auto 16px' }}>
             <CheckCircle2 size={42} />
           </div>
           <h2 className="match-title">You are now connected!</h2>
-          <p className="match-subtitle">
+          <p className="match-subtitle" style={{ margin: '8px 0 20px' }}>
             <strong>{activeMatch.peerPseudonym}</strong> and you have exchanged identities. You can now chat anytime directly in your messages.
           </p>
-          <div style={{ display: 'flex', gap: 12, marginTop: 20, flexWrap: 'wrap', justifyContent: 'center' }}>
+          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', justifyContent: 'center' }}>
             <button
               className="btn btn-primary btn-pill"
               onClick={() => {
@@ -540,15 +473,15 @@ export default function RandomChat() {
     );
   }
 
-  // ── Chatting State ──────────────────────────────────────
+  // ── 3. Full-Screen Chatting State ─────────────────────────
   return (
-    <div className="app-content" style={{ maxWidth: 680, margin: '0 auto', padding: '12px 8px' }}>
+    <div className="roulette-chat-fullscreen">
       <div className="chat-room">
         {/* Chat Header */}
         <div className="chat-header">
           <div className="chat-header-info">
-            <div className="user-avatar" style={{ background: 'var(--accent-bg-strong)', color: 'var(--accent)', width: 40, height: 40, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <User size={20} />
+            <div className="user-avatar" style={{ background: 'var(--accent-bg-strong)', color: 'var(--accent)', width: 38, height: 38, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '50%' }}>
+              <User size={18} />
             </div>
             <div>
               <div className="chat-pseudonym">
@@ -672,7 +605,7 @@ export default function RandomChat() {
           <input
             type="text"
             className="chat-input"
-            placeholder="Type a message (Press Enter to send)..."
+            placeholder="Type a message (Press Enter)..."
             value={chatInput}
             onChange={e => setChatInput(e.target.value)}
             onKeyDown={e => e.key === 'Enter' && handleSendMessage()}
@@ -681,64 +614,43 @@ export default function RandomChat() {
             className="chat-send-btn"
             onClick={() => handleSendMessage()}
             disabled={!chatInput.trim()}
-            style={{ opacity: chatInput.trim() ? 1 : 0.4 }}
           >
-            <Send size={16} />
+            <Send size={18} />
           </button>
         </div>
       </div>
 
-      {/* Connection & Reveal Choice Modal */}
+      {/* Reveal Modal */}
       {showRevealModal && (
-        <div className="modal-overlay" onClick={() => setShowRevealModal(false)}>
+        <div className="modal-backdrop" onClick={() => setShowRevealModal(false)}>
           <div className="modal" style={{ maxWidth: 440 }} onClick={e => e.stopPropagation()}>
-            <div className="reveal-modal-content">
-              <div className="reveal-avatar-wrapper">
-                <div className="reveal-avatar-ring" />
-                <div className="reveal-avatar" style={{ background: 'var(--accent-bg-strong)', color: 'var(--accent)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <User size={28} />
-                </div>
-              </div>
-
-              <div className="reveal-title">Stay Connected?</div>
-              <div className="reveal-subtitle">
-                Choose how you would like to stay in touch with <strong>{activeMatch.peerPseudonym}</strong>:
-              </div>
-
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 10, width: '100%', marginTop: 14 }}>
+            <div className="modal-header">
+              <h2>Connect with Peer</h2>
+              <button className="icon-btn" onClick={() => setShowRevealModal(false)}>
+                <X size={18} />
+              </button>
+            </div>
+            <div className="modal-body" style={{ textAlign: 'center', padding: '16px 0' }}>
+              <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginBottom: 20 }}>
+                Choose how you would like to stay in touch:
+              </p>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                <button
+                  className="btn btn-primary btn-pill"
+                  onClick={handleSendRevealRequest}
+                  style={{ padding: '12px 18px', width: '100%', justifyContent: 'center' }}
+                >
+                  <UserPlus size={16} /> Reveal Real Profile & Add as Friend
+                </button>
                 <button
                   className="btn btn-secondary btn-pill"
-                  style={{ width: '100%', padding: '12px 16px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, borderColor: 'var(--accent)' }}
                   onClick={() => {
                     setShowRevealModal(false);
                     dispatch({ type: 'CONNECT_ANONYMOUSLY' });
                   }}
+                  style={{ padding: '12px 18px', width: '100%', justifyContent: 'center' }}
                 >
-                  <Shield size={16} />
-                  <div style={{ textAlign: 'left' }}>
-                    <div style={{ fontSize: '0.85rem', fontWeight: 700 }}>Chat Anonymously in DMs</div>
-                    <div style={{ fontSize: '0.68rem', color: 'var(--text-tertiary)' }}>Keep identities private. Chat as {activeMatch.peerPseudonym}</div>
-                  </div>
-                </button>
-
-                <button
-                  className="btn btn-primary btn-pill"
-                  style={{ width: '100%', padding: '12px 16px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}
-                  onClick={handleReveal}
-                >
-                  <UserPlus size={16} />
-                  <div style={{ textAlign: 'left' }}>
-                    <div style={{ fontSize: '0.85rem', fontWeight: 700 }}>Reveal Full Profiles</div>
-                    <div style={{ fontSize: '0.68rem', opacity: 0.85 }}>Exchange real names ({me.displayName}) & college profiles</div>
-                  </div>
-                </button>
-
-                <button
-                  className="btn btn-ghost btn-pill btn-sm"
-                  onClick={() => setShowRevealModal(false)}
-                  style={{ marginTop: 4 }}
-                >
-                  Stay in this session
+                  <Shield size={16} /> Stay Anonymous & Continue in Private DMs
                 </button>
               </div>
             </div>
