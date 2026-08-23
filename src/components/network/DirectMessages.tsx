@@ -141,17 +141,20 @@ export default function DirectMessages() {
 
               {/* Messages */}
               <div className="chat-messages">
-                {activeConv.messages.map(msg => (
-                  <div
-                    key={msg.id}
-                    className={`chat-bubble ${msg.senderId === CURRENT_USER.id ? 'sent' : 'received'}`}
-                  >
-                    {msg.content}
-                    <div className="chat-bubble-time">
-                      {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                {activeConv.messages.map(msg => {
+                  const isSentByMe = msg.senderId === (state.currentUser || CURRENT_USER).id;
+                  return (
+                    <div
+                      key={msg.id}
+                      className={`chat-bubble ${isSentByMe ? 'sent' : 'received'}`}
+                    >
+                      {msg.content}
+                      <div className="chat-bubble-time">
+                        {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
                 <div ref={messagesEndRef} />
               </div>
 

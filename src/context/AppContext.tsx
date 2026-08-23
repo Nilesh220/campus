@@ -197,14 +197,15 @@ function appReducer(state: AppState, action: Action): AppState {
 
     case 'ADD_POST': {
       const anon = generateAnonName();
+      const me = state.currentUser || CURRENT_USER;
       const newPost: Post = {
         id: `p${Date.now()}`,
         content: action.payload.content,
         category: action.payload.category,
         tags: action.payload.tags,
-        authorId: action.payload.isAnonymous ? null : CURRENT_USER.id,
-        anonymousName: action.payload.isAnonymous ? anon.name : CURRENT_USER.displayName,
-        anonymousEmoji: action.payload.isAnonymous ? anon.emoji : CURRENT_USER.avatar,
+        authorId: action.payload.isAnonymous ? null : me.id,
+        anonymousName: action.payload.isAnonymous ? anon.name : me.displayName,
+        anonymousEmoji: action.payload.isAnonymous ? anon.emoji : me.avatar,
         isAnonymous: action.payload.isAnonymous,
         upvotes: 0,
         downvotes: 0,
@@ -278,12 +279,13 @@ function appReducer(state: AppState, action: Action): AppState {
 
     case 'ADD_COMMENT': {
       const anon = generateAnonName();
+      const me = state.currentUser || CURRENT_USER;
       const newComment = {
         id: `c${Date.now()}`,
         postId: action.payload.postId,
         content: action.payload.content,
-        authorId: action.payload.isAnonymous ? null : CURRENT_USER.id,
-        anonymousName: action.payload.isAnonymous ? anon.name : CURRENT_USER.displayName,
+        authorId: action.payload.isAnonymous ? null : me.id,
+        anonymousName: action.payload.isAnonymous ? anon.name : me.displayName,
         isAnonymous: action.payload.isAnonymous,
         upvotes: 0,
         createdAt: new Date().toISOString(),
@@ -326,16 +328,17 @@ function appReducer(state: AppState, action: Action): AppState {
       return { ...state, selectedGroupId: action.payload };
 
     case 'SEND_GROUP_MESSAGE': {
+      const me = state.currentUser || CURRENT_USER;
       const newMsg: GroupMessage = {
         id: `gm${Date.now()}`,
         groupId: action.payload.groupId,
-        senderId: CURRENT_USER.id,
-        senderName: CURRENT_USER.displayName,
-        senderAvatar: CURRENT_USER.avatar,
+        senderId: me.id,
+        senderName: me.displayName,
+        senderAvatar: me.avatar,
         content: action.payload.content,
         timestamp: new Date().toISOString(),
       };
-      SupabaseService.sendGroupMessage(action.payload.groupId, CURRENT_USER.displayName, CURRENT_USER.avatar, action.payload.content);
+      SupabaseService.sendGroupMessage(action.payload.groupId, me.displayName, me.avatar, action.payload.content);
       return {
         ...state,
         groups: state.groups.map(g =>
@@ -409,9 +412,10 @@ function appReducer(state: AppState, action: Action): AppState {
 
     case 'SEND_CHAT_MESSAGE': {
       if (!state.activeMatch) return state;
+      const me = state.currentUser || CURRENT_USER;
       const msg: ChatMessage = {
         id: `m${Date.now()}`,
-        senderId: CURRENT_USER.id,
+        senderId: me.id,
         content: action.payload,
         timestamp: new Date().toISOString(),
         type: 'text',
@@ -445,14 +449,15 @@ function appReducer(state: AppState, action: Action): AppState {
 
     case 'ACCEPT_REVEAL': {
       if (!state.activeMatch) return state;
+      const me = state.currentUser || CURRENT_USER;
       const peer = USERS.find(u => u.id === state.activeMatch!.peerId) || USERS[1];
       const newConv: DirectConversation = {
         id: `dc${Date.now()}`,
         participantId: peer.id,
         messages: [
-          { id: `dm${Date.now()}`, senderId: peer.id, content: `Hey ${CURRENT_USER.displayName}! Great connecting on Campus Roulette! 🎉`, timestamp: new Date().toISOString(), type: 'text' },
+          { id: `dm${Date.now()}`, senderId: peer.id, content: `Hey ${me.displayName}! Great connecting on Campus Roulette! 🎉`, timestamp: new Date().toISOString(), type: 'text' },
         ],
-        lastMessage: `Hey ${CURRENT_USER.displayName}! Great connecting on Campus Roulette! 🎉`,
+        lastMessage: `Hey ${me.displayName}! Great connecting on Campus Roulette! 🎉`,
         lastMessageAt: new Date().toISOString(),
         unreadCount: 1,
       };
@@ -509,9 +514,10 @@ function appReducer(state: AppState, action: Action): AppState {
       };
 
     case 'SEND_DM': {
+      const me = state.currentUser || CURRENT_USER;
       const msg: ChatMessage = {
         id: `dm${Date.now()}`,
-        senderId: CURRENT_USER.id,
+        senderId: me.id,
         content: action.payload.content,
         timestamp: new Date().toISOString(),
         type: 'text',

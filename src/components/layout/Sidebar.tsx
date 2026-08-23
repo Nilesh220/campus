@@ -92,7 +92,9 @@ export default function Sidebar() {
           </div>
           <div className="sidebar-footer-info">
             <div className="sidebar-footer-name">{(state.currentUser || CURRENT_USER).displayName}</div>
-            <div className="sidebar-footer-major">{(state.currentUser || CURRENT_USER).major} • {(state.currentUser || CURRENT_USER).graduationYear}</div>
+            <div className="sidebar-footer-major">
+              @{(state.currentUser || CURRENT_USER).username || (state.currentUser || CURRENT_USER).email?.split('@')[0] || 'student'} • {(state.currentUser || CURRENT_USER).major}
+            </div>
           </div>
         </div>
       </aside>

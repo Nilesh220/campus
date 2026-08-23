@@ -9,14 +9,14 @@ import PostCard from './PostCard';
 import CreatePostModal from './CreatePostModal';
 
 const FILTER_CHIPS: { id: string; label: string }[] = [
-  { id: 'all', label: 'All' },
-  { id: 'trending', label: 'Trending' },
-  { id: 'confession', label: 'Confessions' },
-  { id: 'study', label: 'Study' },
-  { id: 'campus-vibe', label: 'Campus Vibe' },
-  { id: 'lost-found', label: 'Lost & Found' },
-  { id: 'meme', label: 'Memes' },
-  { id: 'event', label: 'Events' },
+  { id: 'all', label: '🔥 All' },
+  { id: 'trending', label: '⚡ Trending' },
+  { id: 'confession', label: '🎭 Confessions' },
+  { id: 'campus-vibe', label: '✨ Campus Vibes' },
+  { id: 'study', label: '📚 Study & Doubts' },
+  { id: 'meme', label: '😂 Memes' },
+  { id: 'lost-found', label: '🔍 Lost & Found' },
+  { id: 'event', label: '📢 Events' },
 ];
 
 export default function PulseFeed() {
@@ -25,7 +25,7 @@ export default function PulseFeed() {
 
   const filteredPosts = state.posts.filter(p => {
     if (activeFilter === 'all') return true;
-    if (activeFilter === 'trending') return p.upvotes > 300;
+    if (activeFilter === 'trending') return p.upvotes > 20 || p.comments.length > 0;
     return p.category === activeFilter;
   });
 
@@ -33,8 +33,8 @@ export default function PulseFeed() {
     <div className="app-content">
       {/* Header */}
       <div className="feed-header">
-        <h1 className="feed-title">Pulse Feed</h1>
-        <p className="feed-subtitle">See what's buzzing on campus. Post anonymously or be yourself!</p>
+        <h1 className="feed-title">Pulse Feed 🔥</h1>
+        <p className="feed-subtitle">Real-time campus chatter. Spill the tea anonymously or rep your profile! ✨</p>
 
         <div className="feed-filters">
           {FILTER_CHIPS.map(chip => (
@@ -54,11 +54,11 @@ export default function PulseFeed() {
         className="create-post-trigger"
         onClick={() => dispatch({ type: 'TOGGLE_CREATE_POST' })}
       >
-        <div className="user-avatar" style={{ width: 36, height: 36, fontSize: '1rem', background: 'var(--accent)', color: 'white' }}>
+        <div className="user-avatar" style={{ width: 36, height: 36, fontSize: '1rem', background: 'linear-gradient(135deg, #C4956A 0%, #A78BCA 100%)', color: 'white' }}>
           <Plus size={18} />
         </div>
-        <span className="placeholder-text">Share what's on your mind...</span>
-        <span className="btn btn-primary btn-sm btn-pill">Post</span>
+        <span className="placeholder-text">Spill the tea ☕, drop a confession, or vibe...</span>
+        <span className="btn btn-primary btn-sm btn-pill">Post Pulse</span>
       </button>
 
       {/* Posts */}
@@ -69,9 +69,9 @@ export default function PulseFeed() {
           ))
         ) : (
           <div className="empty-state">
-            <div className="empty-state-icon">📭</div>
-            <div className="empty-state-title">No posts yet</div>
-            <div className="empty-state-desc">Be the first to share something in this category!</div>
+            <div className="empty-state-icon">✨</div>
+            <div className="empty-state-title">No pulses yet in this category</div>
+            <div className="empty-state-desc">Be the main character and share the first pulse! 🚀</div>
           </div>
         )}
       </div>

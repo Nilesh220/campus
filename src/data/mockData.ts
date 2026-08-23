@@ -142,7 +142,29 @@ export const USERS: User[] = [
   },
 ];
 
-// ── Anonymous Name Generator ────────────────────────────────
+const GENZ_PREFIXES = [
+  'cyber', 'shadow', 'neon', 'void', 'astral', 'hyper', 'pixel', 'chill',
+  'aura', 'rizz', 'retro', 'phantom', 'quantum', 'stellar', 'midnight',
+  'apex', 'glitch', 'turbo', 'lunar', 'cosmic', 'zen'
+];
+
+const GENZ_SUFFIXES = [
+  'coder', 'vibe', 'samurai', 'dev', 'pulse', 'hacker', 'beast', 'soul',
+  'legend', 'spark', 'wave', 'rider', 'guru', 'matrix', 'storm', 'ninja'
+];
+
+export function generateGenZUsername(nameHint?: string): string {
+  if (nameHint && nameHint.trim()) {
+    const clean = nameHint.toLowerCase().replace(/[^a-z0-9]/g, '');
+    const num = Math.floor(100 + Math.random() * 900);
+    return `${clean}_${num}`;
+  }
+  const prefix = GENZ_PREFIXES[Math.floor(Math.random() * GENZ_PREFIXES.length)];
+  const suffix = GENZ_SUFFIXES[Math.floor(Math.random() * GENZ_SUFFIXES.length)];
+  const num = Math.floor(10 + Math.random() * 89);
+  return `${prefix}_${suffix}${num}`;
+}
+
 const ANON_ADJECTIVES = [
   'Cosmic', 'Velvet', 'Shadow', 'Neon', 'Mystic', 'Lunar',
   'Electric', 'Crystal', 'Phantom', 'Golden', 'Silent', 'Midnight',

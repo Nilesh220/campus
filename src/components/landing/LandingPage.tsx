@@ -121,7 +121,7 @@ export default function LandingPage({ onLogin }: { onLogin: (user: any) => void 
             </div>
             <h3 className="landing-card-title">Random 1-on-1 Chat</h3>
             <p className="landing-card-desc">
-              Match instantly with fellow students across departments. Built-in icebreakers, topic filters, smart bot peers, and optional anonymous pen-pal DMs.
+              Match instantly with real fellow students across departments. Built-in icebreakers, topic filters, real-time radar scanning, and optional anonymous pen-pal DMs.
             </p>
           </div>
 
@@ -183,6 +183,7 @@ export default function LandingPage({ onLogin }: { onLogin: (user: any) => void 
             onClick={() => {
               onLogin({
                 id: 'admin_nilesh_gupta',
+                username: 'guptanilesh417',
                 email: 'guptanilesh417@gmail.com',
                 displayName: 'Nilesh Gupta',
                 avatar: '⚡',

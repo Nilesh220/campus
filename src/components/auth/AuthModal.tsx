@@ -1,13 +1,13 @@
 // ============================================================
-// Auth Modal — Sign In & Student Registration
+// Auth Modal — Sign In & Student Registration (Gen-Z Enhanced)
 // ============================================================
 
 import { useState } from 'react';
-import { Sparkles, ArrowRight, ShieldCheck, Mail, Lock, User, X } from 'lucide-react';
+import { Sparkles, ArrowRight, ShieldCheck, Mail, Lock, User, X, AtSign, Dices } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
-import { CURRENT_USER } from '../../data/mockData';
+import { CURRENT_USER, generateGenZUsername } from '../../data/mockData';
 
-const AVATARS = ['🎓', '👨‍💻', '🎨', '🎵', '⚡', '🤖', '📸', '🏋️', '🔬', '💡'];
+const AVATARS = ['🎓', '👨‍💻', '🎨', '🎵', '⚡', '🤖', '📸', '🏋️', '🔬', '💡', '👾', '✨'];
 
 const MAJORS = [
   'Computer Science', 'Design & Visual Arts', 'Music & Media',
@@ -23,6 +23,8 @@ interface AuthModalProps {
 
 export default function AuthModal({ initialMode = 'signup', onClose, onSuccess }: AuthModalProps) {
   const [mode, setMode] = useState<'signin' | 'signup'>(initialMode);
+  const [emailOrUsername, setEmailOrUsername] = useState('');
+  const [username, setUsername] = useState(() => generateGenZUsername());
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [displayName, setDisplayName] = useState('');
@@ -32,21 +34,38 @@ export default function AuthModal({ initialMode = 'signup', onClose, onSuccess }
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
+  const handleShuffleUsername = () => {
+    setUsername(generateGenZUsername(displayName));
+  };
+
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setErrorMsg(null);
 
-    const isAdminUser = email.toLowerCase().includes('guptanilesh417') || email.toLowerCase().includes('admin');
+    const inputVal = (mode === 'signup' ? email : emailOrUsername).trim().toLowerCase();
+    const cleanUsername = (username.trim() || generateGenZUsername(displayName)).replace(/^@/, '').toLowerCase();
+
+    const isNilesh = inputVal.includes('guptanilesh417') ||
+                     cleanUsername.includes('guptanilesh417') ||
+                     displayName.toLowerCase().includes('guptanilesh417') ||
+                     inputVal.includes('admin');
+
+    const resolvedEmail = inputVal.includes('@') && inputVal.includes('.')
+      ? inputVal
+      : `${inputVal.replace(/[^a-z0-9_]/g, '') || cleanUsername}@campus.edu`;
+
+    const finalUsername = mode === 'signup' ? cleanUsername : (inputVal.replace('@', '').split('@')[0] || 'student');
 
     try {
       if (mode === 'signup') {
         const { data, error } = await supabase.auth.signUp({
-          email,
+          email: resolvedEmail,
           password,
           options: {
             data: {
-              display_name: displayName.trim() || 'Campus Student',
+              display_name: displayName.trim() || finalUsername,
+              username: finalUsername,
               major,
               graduation_year: parseInt(gradYear),
               avatar,
@@ -58,31 +77,33 @@ export default function AuthModal({ initialMode = 'signup', onClose, onSuccess }
           console.warn('Supabase auth signup notice:', error.message);
           onSuccess({
             id: `u_${Date.now()}`,
-            email,
-            displayName: displayName.trim() || 'Campus Student',
+            username: finalUsername,
+            email: resolvedEmail,
+            displayName: displayName.trim() || finalUsername,
             major,
             graduationYear: parseInt(gradYear),
             avatar,
             college: 'Campus University',
             pulseScore: 100,
-            isAdmin: isAdminUser,
+            isAdmin: isNilesh,
           });
         } else if (data.user) {
           onSuccess({
             id: data.user.id,
+            username: finalUsername,
             email: data.user.email,
-            displayName: displayName.trim() || 'Campus Student',
+            displayName: displayName.trim() || finalUsername,
             major,
             graduationYear: parseInt(gradYear),
             avatar,
             college: 'Campus University',
             pulseScore: 100,
-            isAdmin: isAdminUser,
+            isAdmin: isNilesh,
           });
         }
       } else {
         const { data, error } = await supabase.auth.signInWithPassword({
-          email,
+          email: resolvedEmail,
           password,
         });
 
@@ -90,13 +111,15 @@ export default function AuthModal({ initialMode = 'signup', onClose, onSuccess }
           console.warn('Supabase auth signin notice:', error.message);
           onSuccess({
             ...CURRENT_USER,
-            email,
-            displayName: email.split('@')[0] || 'Campus Student',
-            isAdmin: isAdminUser,
+            username: finalUsername,
+            email: resolvedEmail,
+            displayName: displayName.trim() || finalUsername || 'Campus Student',
+            isAdmin: isNilesh,
           });
         } else if (data.user) {
           onSuccess({
             id: data.user.id,
+            username: data.user.user_metadata?.username || finalUsername,
             email: data.user.email,
             displayName: data.user.user_metadata?.display_name || CURRENT_USER.displayName,
             avatar: data.user.user_metadata?.avatar || CURRENT_USER.avatar,
@@ -104,13 +127,13 @@ export default function AuthModal({ initialMode = 'signup', onClose, onSuccess }
             graduationYear: data.user.user_metadata?.graduation_year || 2027,
             college: 'Campus University',
             pulseScore: 150,
-            isAdmin: isAdminUser,
+            isAdmin: isNilesh,
           });
         }
       }
     } catch (err: any) {
       console.warn('Auth fallback:', err);
-      onSuccess({ ...CURRENT_USER, isAdmin: isAdminUser });
+      onSuccess({ ...CURRENT_USER, isAdmin: isNilesh });
     } finally {
       setLoading(false);
     }
@@ -119,6 +142,7 @@ export default function AuthModal({ initialMode = 'signup', onClose, onSuccess }
   const handleGuestEntry = () => {
     onSuccess({
       id: 'demo_guest_1',
+      username: 'guest_student',
       displayName: 'Guest Student',
       avatar: '🎓',
       email: 'guest@campus.edu',
@@ -132,7 +156,7 @@ export default function AuthModal({ initialMode = 'signup', onClose, onSuccess }
 
   return (
     <div className="modal-overlay" onClick={onClose}>
-      <div className="modal auth-card" style={{ maxWidth: 440 }} onClick={e => e.stopPropagation()}>
+      <div className="modal auth-card" style={{ maxWidth: 460 }} onClick={e => e.stopPropagation()}>
         <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 4 }}>
           <button className="icon-btn" onClick={onClose}>
             <X size={20} />
@@ -145,7 +169,7 @@ export default function AuthModal({ initialMode = 'signup', onClose, onSuccess }
             <Sparkles size={24} />
           </div>
           <h2 className="auth-brand">CampusSparks</h2>
-          <p className="auth-tagline">The student social & random matchmaking network</p>
+          <p className="auth-tagline">Where campus connects, matches & vibes ✨</p>
         </div>
 
         {/* Tab Switcher */}
@@ -173,11 +197,11 @@ export default function AuthModal({ initialMode = 'signup', onClose, onSuccess }
         )}
 
         <form onSubmit={handleAuth} className="auth-form">
-          {mode === 'signup' && (
+          {mode === 'signup' ? (
             <>
               {/* Avatar Picker */}
               <div className="form-group" style={{ marginBottom: 12 }}>
-                <label className="form-label" style={{ fontSize: '0.74rem' }}>Avatar</label>
+                <label className="form-label" style={{ fontSize: '0.74rem' }}>Choose Avatar</label>
                 <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                   {AVATARS.map(av => (
                     <button
@@ -199,18 +223,44 @@ export default function AuthModal({ initialMode = 'signup', onClose, onSuccess }
                 </div>
               </div>
 
-              {/* Display Name */}
-              <div className="form-group" style={{ marginBottom: 12 }}>
-                <label className="form-label" style={{ fontSize: '0.74rem' }}>Full / Display Name</label>
-                <div className="auth-input-wrapper">
-                  <User size={16} />
-                  <input
-                    type="text"
-                    required
-                    placeholder="e.g. Arjun Sharma"
-                    value={displayName}
-                    onChange={e => setDisplayName(e.target.value)}
-                  />
+              {/* Display Name & Gen-Z Username */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 12 }}>
+                <div className="form-group" style={{ marginBottom: 0 }}>
+                  <label className="form-label" style={{ fontSize: '0.74rem' }}>Display Name</label>
+                  <div className="auth-input-wrapper">
+                    <User size={15} />
+                    <input
+                      type="text"
+                      required
+                      placeholder="e.g. Arjun Sharma"
+                      value={displayName}
+                      onChange={e => setDisplayName(e.target.value)}
+                    />
+                  </div>
+                </div>
+
+                <div className="form-group" style={{ marginBottom: 0 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <label className="form-label" style={{ fontSize: '0.74rem' }}>Username</label>
+                    <button
+                      type="button"
+                      onClick={handleShuffleUsername}
+                      style={{ background: 'none', border: 'none', color: 'var(--accent)', cursor: 'pointer', fontSize: '0.7rem', display: 'flex', alignItems: 'center', gap: 2, padding: 0 }}
+                      title="Generate cool username"
+                    >
+                      <Dices size={12} /> Suggest
+                    </button>
+                  </div>
+                  <div className="auth-input-wrapper">
+                    <AtSign size={15} />
+                    <input
+                      type="text"
+                      required
+                      placeholder="username"
+                      value={username}
+                      onChange={e => setUsername(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ''))}
+                    />
+                  </div>
                 </div>
               </div>
 
@@ -242,27 +292,45 @@ export default function AuthModal({ initialMode = 'signup', onClose, onSuccess }
                   </select>
                 </div>
               </div>
-            </>
-          )}
 
-          {/* Email */}
-          <div className="form-group" style={{ marginBottom: 12 }}>
-            <label className="form-label" style={{ fontSize: '0.74rem' }}>Email</label>
-            <div className="auth-input-wrapper">
-              <Mail size={16} />
-              <input
-                type="text"
-                inputMode="email"
-                autoCapitalize="none"
-                autoCorrect="off"
-                spellCheck={false}
-                required
-                placeholder="e.g. guptanilesh417@gmail.com"
-                value={email}
-                onChange={e => setEmail(e.target.value)}
-              />
+              {/* Email */}
+              <div className="form-group" style={{ marginBottom: 12 }}>
+                <label className="form-label" style={{ fontSize: '0.74rem' }}>Email</label>
+                <div className="auth-input-wrapper">
+                  <Mail size={16} />
+                  <input
+                    type="text"
+                    inputMode="email"
+                    autoCapitalize="none"
+                    autoCorrect="off"
+                    spellCheck={false}
+                    required
+                    placeholder="student@college.edu or gmail.com"
+                    value={email}
+                    onChange={e => setEmail(e.target.value)}
+                  />
+                </div>
+              </div>
+            </>
+          ) : (
+            /* Sign In Mode: Username OR Email */
+            <div className="form-group" style={{ marginBottom: 12 }}>
+              <label className="form-label" style={{ fontSize: '0.74rem' }}>Username or Email</label>
+              <div className="auth-input-wrapper">
+                <AtSign size={16} />
+                <input
+                  type="text"
+                  autoCapitalize="none"
+                  autoCorrect="off"
+                  spellCheck={false}
+                  required
+                  placeholder="@username or email address"
+                  value={emailOrUsername}
+                  onChange={e => setEmailOrUsername(e.target.value)}
+                />
+              </div>
             </div>
-          </div>
+          )}
 
           {/* Password */}
           <div className="form-group" style={{ marginBottom: 16 }}>

@@ -297,28 +297,32 @@ export default function RandomChat() {
 
         {/* Messages Feed */}
         <div className="chat-messages">
-          {activeMatch.messages.map(msg => (
-            <div
-              key={msg.id}
-              className={`chat-bubble ${
-                msg.type === 'system' ? 'system' :
-                msg.type === 'icebreaker' ? 'icebreaker' :
-                msg.senderId === CURRENT_USER.id ? 'sent' : 'received'
-              }`}
-            >
-              {msg.type === 'icebreaker' && (
-                <div className="chat-bubble-icebreaker-title">
-                  <MessageSquareQuote size={14} /> Icebreaker Question
-                </div>
-              )}
-              <div>{msg.content}</div>
-              {msg.type === 'text' && (
-                <div className="chat-bubble-time">
-                  {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                </div>
-              )}
-            </div>
-          ))}
+          {activeMatch.messages.map(msg => {
+            const me = state.currentUser || CURRENT_USER;
+            const isSentByMe = msg.senderId === me.id;
+            return (
+              <div
+                key={msg.id}
+                className={`chat-bubble ${
+                  msg.type === 'system' ? 'system' :
+                  msg.type === 'icebreaker' ? 'icebreaker' :
+                  isSentByMe ? 'sent' : 'received'
+                }`}
+              >
+                {msg.type === 'icebreaker' && (
+                  <div className="chat-bubble-icebreaker-title">
+                    <MessageSquareQuote size={14} /> Icebreaker Question
+                  </div>
+                )}
+                <div>{msg.content}</div>
+                {msg.type === 'text' && (
+                  <div className="chat-bubble-time">
+                    {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                  </div>
+                )}
+              </div>
+            );
+          })}
 
           {/* Messages Feed */}
           <div ref={messagesEndRef} />
@@ -399,7 +403,7 @@ export default function RandomChat() {
                   <UserPlus size={16} />
                   <div style={{ textAlign: 'left' }}>
                     <div style={{ fontSize: '0.85rem', fontWeight: 700 }}>Reveal Full Profiles</div>
-                    <div style={{ fontSize: '0.68rem', opacity: 0.85 }}>Exchange real names ({CURRENT_USER.displayName}) & college profiles</div>
+                    <div style={{ fontSize: '0.68rem', opacity: 0.85 }}>Exchange real names ({(state.currentUser || CURRENT_USER).displayName}) & college profiles</div>
                   </div>
                 </button>
 
