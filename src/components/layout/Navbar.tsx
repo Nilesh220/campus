@@ -10,14 +10,6 @@ import { CURRENT_USER, USERS } from '../../data/mockData';
 import NotificationDropdown from '../shared/NotificationDropdown';
 import type { User, DirectConversation } from '../../types';
 
-const TAB_TITLES: Record<string, string> = {
-  feed: 'Pulse Feed',
-  match: 'Random Chat',
-  groups: 'Groups & Hubs',
-  bulletin: 'Bulletin Board',
-  messages: 'Direct Messages',
-};
-
 export default function Navbar() {
   const { state, dispatch } = useApp();
   const [searchQuery, setSearchQuery] = useState('');
@@ -85,23 +77,22 @@ export default function Navbar() {
       <div className="navbar-left">
         {/* Mobile menu button */}
         <button
-          className="icon-btn"
+          className="icon-btn mobile-menu-trigger"
           onClick={() => dispatch({ type: 'TOGGLE_SIDEBAR' })}
-          style={{ display: 'none' }}
-          id="mobile-menu-btn"
+          title="Open Menu"
         >
           <Menu size={22} />
         </button>
-        <style>{`
-          @media (max-width: 1024px) {
-            #mobile-menu-btn { display: flex !important; }
-          }
-        `}</style>
 
-        <span className="navbar-logo" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-          <Sparkles size={18} style={{ color: 'var(--accent)' }} /> CampusSparks
-        </span>
-        <span className="navbar-title">{TAB_TITLES[state.activeTab] || 'CampusSparks'}</span>
+        {/* Brand Logo & Name */}
+        <div className="navbar-brand-badge" style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }} onClick={() => dispatch({ type: 'SET_TAB', payload: 'feed' })}>
+          <div style={{ width: 32, height: 32, borderRadius: 10, background: 'var(--accent-bg-strong)', color: 'var(--accent)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <Sparkles size={18} />
+          </div>
+          <span style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.5px' }}>
+            CampusSparks
+          </span>
+        </div>
       </div>
 
       <div className="navbar-right">

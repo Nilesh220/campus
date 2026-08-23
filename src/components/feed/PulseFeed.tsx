@@ -1,11 +1,11 @@
 // ============================================================
-// Pulse Feed Page — Clean Professional Campus Stream
+// Pulse Feed Page — Premium Consumer-Grade Campus Stream
 // ============================================================
 
 import { useState } from 'react';
 import {
-  Plus, RefreshCw, Flame, TrendingUp, Ghost, Zap,
-  BookOpen, Smile, Search, Megaphone, Sparkles
+  Sparkles, RefreshCw, Flame, TrendingUp, Ghost, Zap,
+  BookOpen, Smile, Search, Megaphone, Plus
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { SupabaseService } from '../../services/supabaseService';
@@ -34,7 +34,7 @@ export default function PulseFeed() {
     if (livePosts.length > 0) {
       dispatch({ type: 'SET_POSTS', payload: livePosts });
     }
-    setTimeout(() => setIsRefreshing(false), 600);
+    setTimeout(() => setIsRefreshing(false), 500);
   };
 
   const filteredPosts = state.posts.filter(p => {
@@ -43,38 +43,40 @@ export default function PulseFeed() {
     return p.category === activeFilter;
   });
 
+  const currentUser = state.currentUser;
+
   return (
-    <div className="app-content" style={{ maxWidth: 760, margin: '0 auto', padding: '16px 12px' }}>
-      {/* Header */}
-      <div className="feed-header">
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 12 }}>
-          <div>
-            <h1 className="feed-title" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <Flame size={24} style={{ color: 'var(--accent)' }} /> Pulse Feed
-            </h1>
-            <p className="feed-subtitle">Live campus chatter. Share anonymously or post from your profile.</p>
+    <div className="feed-container">
+      {/* ── Top Header ────────────────────────────────────── */}
+      <div className="feed-hero-header">
+        <div className="feed-hero-text">
+          <div className="feed-hero-title-row">
+            <h1 className="feed-hero-title">Pulse Feed</h1>
+            <button
+              className={`feed-sync-btn ${isRefreshing ? 'spinning' : ''}`}
+              onClick={handleRefreshFeed}
+              disabled={isRefreshing}
+              title="Sync Live Stream"
+            >
+              <RefreshCw size={15} />
+              <span>{isRefreshing ? 'Syncing' : 'Live Sync'}</span>
+            </button>
           </div>
-          <button
-            className="btn btn-secondary btn-sm btn-pill"
-            onClick={handleRefreshFeed}
-            disabled={isRefreshing}
-            style={{ display: 'flex', alignItems: 'center', gap: 6 }}
-          >
-            <RefreshCw size={14} className={isRefreshing ? 'spin' : ''} />
-            {isRefreshing ? 'Syncing...' : 'Live Sync'}
-          </button>
+          <p className="feed-hero-subtitle">
+            Realtime campus thoughts, anonymous confessions & updates.
+          </p>
         </div>
 
-        <div className="feed-filters" style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 6 }}>
+        {/* ── Category Filter Pills ─────────────────────────── */}
+        <div className="feed-filter-scroll">
           {FILTER_CHIPS.map(chip => {
             const Icon = chip.icon;
             const isActive = activeFilter === chip.id;
             return (
               <button
                 key={chip.id}
-                className={`chip ${isActive ? 'active' : ''}`}
+                className={`filter-pill ${isActive ? 'active' : ''}`}
                 onClick={() => setActiveFilter(chip.id)}
-                style={{ display: 'flex', alignItems: 'center', gap: 6, whiteSpace: 'nowrap' }}
               >
                 <Icon size={14} />
                 <span>{chip.label}</span>
@@ -84,32 +86,43 @@ export default function PulseFeed() {
         </div>
       </div>
 
-      {/* Create Post Trigger */}
-      <button
-        className="create-post-trigger"
+      {/* ── Sleek Composer Card ───────────────────────────── */}
+      <div
+        className="feed-composer-card"
         onClick={() => dispatch({ type: 'TOGGLE_CREATE_POST' })}
-        style={{ width: '100%', borderRadius: 'var(--radius-lg)' }}
       >
-        <div className="user-avatar" style={{ width: 36, height: 36, background: 'var(--accent-bg-strong)', color: 'var(--accent)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <Plus size={18} />
+        <div className="composer-avatar">
+          {currentUser?.avatar || '🎓'}
         </div>
-        <span className="placeholder-text">Share a thought, confession, question, or vibe...</span>
-        <span className="btn btn-primary btn-sm btn-pill hide-mobile">Publish Pulse</span>
-      </button>
+        <div className="composer-input-fake">
+          <span>What's happening on campus?</span>
+        </div>
+        <button className="composer-action-btn">
+          <Plus size={16} />
+          <span>Post</span>
+        </button>
+      </div>
 
-      {/* Posts */}
-      <div className="post-list">
+      {/* ── Posts Stream ──────────────────────────────────── */}
+      <div className="feed-stream">
         {filteredPosts.length > 0 ? (
           filteredPosts.map((post, i) => (
-            <PostCard key={post.id} post={post} style={{ animationDelay: `${i * 0.05}s` }} />
+            <PostCard key={post.id} post={post} style={{ animationDelay: `${i * 0.04}s` }} />
           ))
         ) : (
-          <div className="empty-state">
-            <div className="empty-state-icon" style={{ background: 'var(--accent-bg-strong)', color: 'var(--accent)', width: 56, height: 56, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 12px' }}>
+          <div className="feed-empty-state">
+            <div className="feed-empty-icon">
               <Sparkles size={28} />
             </div>
-            <div className="empty-state-title">No pulses yet in this category</div>
-            <div className="empty-state-desc">Be the first student to publish a post in this category!</div>
+            <h3>No pulses in this category yet</h3>
+            <p>Be the first student to drop a confession or thought!</p>
+            <button
+              className="btn btn-primary btn-pill"
+              onClick={() => dispatch({ type: 'TOGGLE_CREATE_POST' })}
+              style={{ marginTop: 14 }}
+            >
+              <Plus size={16} /> Create First Pulse
+            </button>
           </div>
         )}
       </div>

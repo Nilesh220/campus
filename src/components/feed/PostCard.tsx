@@ -1,42 +1,44 @@
 // ============================================================
-// Post Card Component — Clean Lucide Icons & Responsive Design
+// Post Card — Premium Social Feed Card (Threads / Reddit Style)
 // ============================================================
 
 import { useState } from 'react';
 import {
   ArrowBigUp, ArrowBigDown, MessageCircle, Share2,
-  Ghost, BookOpen, Search, Zap, Megaphone, Smile, User
+  Ghost, User, Flame, TrendingUp, Zap, BookOpen,
+  Smile, Search, Megaphone, Check
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
-import { POST_CATEGORIES, USERS, CURRENT_USER } from '../../data/mockData';
-import type { Post, PostCategory } from '../../types';
+import { POST_CATEGORIES, USERS } from '../../data/mockData';
+import type { Post } from '../../types';
 
-function getCategoryIcon(cat: PostCategory) {
-  switch (cat) {
-    case 'confession': return <Ghost size={13} />;
-    case 'study': return <BookOpen size={13} />;
-    case 'lost-found': return <Search size={13} />;
-    case 'campus-vibe': return <Zap size={13} />;
-    case 'event': return <Megaphone size={13} />;
-    case 'meme': return <Smile size={13} />;
-    default: return <Ghost size={13} />;
-  }
+interface PostCardProps {
+  post: Post;
+  style?: React.CSSProperties;
 }
 
-function timeAgo(date: string): string {
-  const diff = Date.now() - new Date(date).getTime();
-  const mins = Math.floor(diff / 60000);
-  if (mins < 1) return 'Just now';
-  if (mins < 60) return `${mins}m ago`;
-  const hours = Math.floor(mins / 60);
+function timeAgo(dateStr: string): string {
+  const seconds = Math.floor((Date.now() - new Date(dateStr).getTime()) / 1000);
+  if (seconds < 60) return 'just now';
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.floor(minutes / 60);
   if (hours < 24) return `${hours}h ago`;
   const days = Math.floor(hours / 24);
   return `${days}d ago`;
 }
 
-interface PostCardProps {
-  post: Post;
-  style?: React.CSSProperties;
+function getCategoryIcon(cat: string) {
+  switch (cat) {
+    case 'confession': return <Ghost size={12} />;
+    case 'campus-vibe': return <Zap size={12} />;
+    case 'study': return <BookOpen size={12} />;
+    case 'meme': return <Smile size={12} />;
+    case 'lost-found': return <Search size={12} />;
+    case 'event': return <Megaphone size={12} />;
+    case 'trending': return <TrendingUp size={12} />;
+    default: return <Flame size={12} />;
+  }
 }
 
 export default function PostCard({ post, style }: PostCardProps) {
@@ -45,18 +47,19 @@ export default function PostCard({ post, style }: PostCardProps) {
   const [commentText, setCommentText] = useState('');
   const [copiedLink, setCopiedLink] = useState(false);
 
-  const category = POST_CATEGORIES[post.category] || POST_CATEGORIES['confession'];
-  const author = post.isAnonymous
-    ? null
-    : (post.authorId === CURRENT_USER.id ? CURRENT_USER : USERS.find(u => u.id === post.authorId));
-
+  const category = (POST_CATEGORIES as any)[post.category] || { label: 'General', color: '#5BB5A2', icon: 'Flame' };
+  const author = USERS.find(u => u.id === post.authorId);
   const netVotes = post.upvotes - post.downvotes;
 
   const handleComment = () => {
     if (!commentText.trim()) return;
     dispatch({
       type: 'ADD_COMMENT',
-      payload: { postId: post.id, content: commentText, isAnonymous: false },
+      payload: {
+        postId: post.id,
+        content: commentText.trim(),
+        isAnonymous: false,
+      },
     });
     setCommentText('');
   };
@@ -67,112 +70,121 @@ export default function PostCard({ post, style }: PostCardProps) {
         navigator.clipboard.writeText(window.location.origin);
       }
     } catch (err) {
-      console.warn('Clipboard copy notice:', err);
+      console.warn('Clipboard notice:', err);
     }
     setCopiedLink(true);
     setTimeout(() => setCopiedLink(false), 2000);
   };
 
   return (
-    <article className="post-card" style={style}>
-      {/* Header */}
-      <div className="post-header">
+    <article className="feed-post-card" style={style}>
+      {/* ── Header ────────────────────────────────────────── */}
+      <div className="feed-post-header">
         <div
-          className="post-avatar"
-          style={{ background: post.isAnonymous ? category.color + '15' : 'var(--accent-bg-strong)', color: post.isAnonymous ? category.color : 'var(--accent)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+          className="feed-post-avatar"
+          style={{
+            background: post.isAnonymous ? 'rgba(167, 139, 202, 0.15)' : 'var(--accent-bg-strong)',
+            color: post.isAnonymous ? 'var(--cat-confession)' : 'var(--accent)',
+          }}
         >
-          {post.isAnonymous ? <Ghost size={18} /> : <User size={18} />}
+          {post.isAnonymous ? <Ghost size={20} /> : <User size={20} />}
         </div>
-        <div className="post-meta">
-          <div className="post-author">
-            {post.isAnonymous ? post.anonymousName : (author?.displayName || 'Student')}
-            {post.isAnonymous && <span className="anon-badge">Anonymous</span>}
+
+        <div className="feed-post-author-box">
+          <div className="feed-post-name-row">
+            <span className="feed-post-author-name">
+              {post.isAnonymous ? post.anonymousName : (author?.displayName || 'Campus Student')}
+            </span>
+            {post.isAnonymous && (
+              <span className="feed-anon-tag">Anonymous</span>
+            )}
           </div>
-          <div className="post-timestamp">{timeAgo(post.createdAt)}</div>
+          <span className="feed-post-time">{timeAgo(post.createdAt)}</span>
         </div>
+
         <span
-          className="post-category-tag"
-          style={{ background: category.color + '15', color: category.color, display: 'inline-flex', alignItems: 'center', gap: 5, padding: '4px 10px', borderRadius: 'var(--radius-pill)', fontSize: '0.72rem', fontWeight: 600 }}
+          className="feed-category-pill"
+          style={{
+            background: `${category.color}15`,
+            color: category.color,
+            borderColor: `${category.color}30`,
+          }}
         >
-          {getCategoryIcon(post.category)} {category.label}
+          {getCategoryIcon(post.category)}
+          <span>{category.label}</span>
         </span>
       </div>
 
-      {/* Content */}
-      <p className="post-content">{post.content}</p>
+      {/* ── Content ───────────────────────────────────────── */}
+      <div className="feed-post-body">
+        <p>{post.content}</p>
+      </div>
 
-      {/* Tags */}
+      {/* ── Tags ──────────────────────────────────────────── */}
       {post.tags && post.tags.length > 0 && (
-        <div className="post-tags">
+        <div className="feed-post-tags">
           {post.tags.map(tag => (
-            <span key={tag} className="post-tag">#{tag}</span>
+            <span key={tag} className="feed-tag-pill">#{tag}</span>
           ))}
         </div>
       )}
 
-      {/* Actions */}
-      <div className="post-actions">
-        {/* Upvote */}
+      {/* ── Consolidated Action Bar ────────────────────────── */}
+      <div className="feed-post-footer">
+        {/* Vote Pill Container */}
+        <div className="feed-vote-pill">
+          <button
+            className={`feed-vote-btn ${post.isUpvotedByUser ? 'active-up' : ''}`}
+            onClick={() => dispatch({ type: 'UPVOTE_POST', payload: post.id })}
+            title="Upvote"
+          >
+            <ArrowBigUp size={20} />
+          </button>
+
+          <span className={`feed-vote-count ${netVotes > 0 ? 'positive' : netVotes < 0 ? 'negative' : ''}`}>
+            {netVotes}
+          </span>
+
+          <button
+            className={`feed-vote-btn ${post.isDownvotedByUser ? 'active-down' : ''}`}
+            onClick={() => dispatch({ type: 'DOWNVOTE_POST', payload: post.id })}
+            title="Downvote"
+          >
+            <ArrowBigDown size={20} />
+          </button>
+        </div>
+
+        {/* Comment Button */}
         <button
-          className={`post-action-btn ${post.isUpvotedByUser ? 'upvoted' : ''}`}
-          onClick={() => dispatch({ type: 'UPVOTE_POST', payload: post.id })}
-          title="Upvote"
-        >
-          <ArrowBigUp size={18} />
-        </button>
-
-        <span className="vote-count" style={{
-          color: netVotes > 0 ? 'var(--accent)' : netVotes < 0 ? 'var(--color-error)' : 'var(--text-tertiary)',
-        }}>
-          {netVotes}
-        </span>
-
-        {/* Downvote */}
-        <button
-          className={`post-action-btn ${post.isDownvotedByUser ? 'downvoted' : ''}`}
-          onClick={() => dispatch({ type: 'DOWNVOTE_POST', payload: post.id })}
-          title="Downvote"
-        >
-          <ArrowBigDown size={18} />
-        </button>
-
-        <div className="post-action-divider" />
-
-        {/* Comment Toggle */}
-        <button
-          className="post-action-btn"
+          className={`feed-footer-btn ${showComments ? 'active' : ''}`}
           onClick={() => setShowComments(!showComments)}
-          style={{ display: 'flex', alignItems: 'center', gap: 6 }}
         >
-          <MessageCircle size={16} />
-          <span style={{ fontSize: '0.78rem' }}>{post.comments?.length || 0}</span>
+          <MessageCircle size={17} />
+          <span>{post.comments?.length || 0}</span>
         </button>
 
-        {/* Share */}
+        {/* Share Button */}
         <button
-          className="post-action-btn"
+          className="feed-footer-btn share-btn"
           onClick={handleShare}
-          title="Share Pulse"
-          style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 4 }}
+          title="Share Link"
         >
-          <Share2 size={16} />
-          {copiedLink && <span style={{ fontSize: '0.7rem', color: 'var(--accent)' }}>Copied!</span>}
+          {copiedLink ? <Check size={16} style={{ color: 'var(--color-success)' }} /> : <Share2 size={16} />}
+          <span>{copiedLink ? 'Copied' : 'Share'}</span>
         </button>
       </div>
 
-      {/* Comments Section */}
+      {/* ── Comments Drawer ─────────────────────────────────── */}
       {showComments && (
-        <div className="comments-section" style={{ borderTop: '1px solid var(--border-light)', paddingTop: 12, marginTop: 12 }}>
-          {/* Input */}
-          <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
+        <div className="feed-comments-box">
+          <div className="feed-comment-input-row">
             <input
               type="text"
-              className="comment-input"
-              placeholder="Write a supportive reply..."
+              placeholder="Drop a thought or reply..."
               value={commentText}
               onChange={e => setCommentText(e.target.value)}
               onKeyDown={e => e.key === 'Enter' && handleComment()}
-              style={{ flex: 1, padding: '8px 12px', fontSize: '0.82rem', borderRadius: 'var(--radius-md)' }}
+              className="feed-comment-input"
             />
             <button
               className="btn btn-primary btn-sm btn-pill"
@@ -183,29 +195,28 @@ export default function PostCard({ post, style }: PostCardProps) {
             </button>
           </div>
 
-          {/* Comment List */}
           {post.comments && post.comments.length > 0 ? (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {post.comments.map(c => (
-                <div key={c.id} style={{ padding: '8px 12px', background: 'var(--bg-tertiary)', borderRadius: 'var(--radius-md)' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 2 }}>
-                    <span style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-primary)' }}>
-                      {c.isAnonymous ? c.anonymousName : 'Student'}
-                    </span>
-                    <span style={{ fontSize: '0.68rem', color: 'var(--text-tertiary)' }}>
-                      {timeAgo(c.createdAt)}
-                    </span>
+            <div className="feed-comments-list">
+              {post.comments.map(c => {
+                const commentAuthor = USERS.find(u => u.id === c.authorId);
+                return (
+                  <div key={c.id} className="feed-comment-item">
+                    <div className="feed-comment-avatar">
+                      {c.isAnonymous ? '👻' : '🎓'}
+                    </div>
+                    <div className="feed-comment-content">
+                      <div className="feed-comment-header">
+                        <span className="feed-comment-author">{c.isAnonymous ? 'Anonymous' : (commentAuthor?.displayName || 'Student')}</span>
+                        <span className="feed-comment-time">{timeAgo(c.createdAt)}</span>
+                      </div>
+                      <p className="feed-comment-text">{c.content}</p>
+                    </div>
                   </div>
-                  <div style={{ fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
-                    {c.content}
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           ) : (
-            <div style={{ fontSize: '0.76rem', color: 'var(--text-tertiary)', textAlign: 'center', padding: '8px 0' }}>
-              No comments yet. Start the conversation!
-            </div>
+            <div className="feed-comments-empty">No replies yet. Be the first to chime in!</div>
           )}
         </div>
       )}
