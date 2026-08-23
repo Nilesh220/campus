@@ -1,19 +1,14 @@
-// ============================================================
-// Random Chat — Anonymous 1-on-1 Campus Matching with Smart Bots
-// ============================================================
-
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { Send, Sparkles, UserPlus, SkipForward, X, Zap, Shield, MessageSquareQuote, RotateCcw } from 'lucide-react';
-import confetti from 'canvas-confetti';
 import { useApp } from '../../context/AppContext';
-import { INTEREST_TAGS, ICEBREAKERS, CURRENT_USER, BOT_PEERS, generateAnonName } from '../../data/mockData';
-import type { ChatMessage, AnonMatch } from '../../types';
+import { INTEREST_TAGS, ICEBREAKERS, CURRENT_USER } from '../../data/mockData';
+import type { ChatMessage } from '../../types';
 
 const SEARCHING_TIPS = [
   'Searching through active campus dorms & departments...',
-  'Tip: You can ask for an icebreaker prompt anytime during chat!',
+  'Tip: You can select interest tags above to match by common vibe.',
   'Your identity stays 100% anonymous until both sides agree to reveal.',
-  'Finding a fellow student with matching interests...',
+  'Waiting for a live campus student to connect...',
 ];
 
 const QUICK_STARTERS = [
@@ -29,9 +24,7 @@ export default function RandomChat() {
   const [selectedInterests, setSelectedInterests] = useState<string[]>([]);
   const [chatInput, setChatInput] = useState('');
   const [showRevealModal, setShowRevealModal] = useState(false);
-  const [isTyping, setIsTyping] = useState(false);
   const [tipIndex, setTipIndex] = useState(0);
-  const currentBotPeerRef = useRef<any>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = useCallback(() => {
@@ -47,7 +40,7 @@ export default function RandomChat() {
     if (activeMatch?.status === 'searching') {
       const interval = setInterval(() => {
         setTipIndex(prev => (prev + 1) % SEARCHING_TIPS.length);
-      }, 2400);
+      }, 2600);
       return () => clearInterval(interval);
     }
   }, [activeMatch?.status]);
@@ -58,50 +51,9 @@ export default function RandomChat() {
     );
   };
 
-  // ── Matchmaking Logic (Realtime or Smart Fallback Bot) ──────
+  // ── Matchmaking Logic (Realtime Student Matching — Zero Bots) ──────
   const handleStartMatch = () => {
     dispatch({ type: 'START_MATCHING' });
-
-    // Match within 2.5 seconds with live student or dynamic bot peer
-    const delay = 2200 + Math.random() * 1000;
-    setTimeout(() => {
-      const anon = generateAnonName();
-      const botPeer = BOT_PEERS[Math.floor(Math.random() * BOT_PEERS.length)];
-      currentBotPeerRef.current = botPeer;
-
-      const icebreaker = ICEBREAKERS[Math.floor(Math.random() * ICEBREAKERS.length)];
-
-      const match: AnonMatch = {
-        id: `match_${Date.now()}`,
-        peerId: botPeer.id,
-        peerPseudonym: anon.name,
-        peerEmoji: botPeer.emoji || anon.emoji,
-        matchedAt: new Date().toISOString(),
-        interestTags: selectedInterests.length > 0 ? selectedInterests : ['General Campus Chat'],
-        messages: [
-          {
-            id: `sys_${Date.now()}`,
-            senderId: 'system',
-            content: `Connected with ${anon.name} ${botPeer.emoji}`,
-            timestamp: new Date().toISOString(),
-            type: 'system',
-          },
-          {
-            id: `ice_${Date.now()}`,
-            senderId: 'system',
-            content: icebreaker,
-            timestamp: new Date().toISOString(),
-            type: 'icebreaker',
-            isIcebreaker: true,
-          },
-        ],
-        status: 'chatting',
-        revealRequestSent: false,
-        revealRequestReceived: false,
-      };
-
-      dispatch({ type: 'MATCH_FOUND', payload: match });
-    }, delay);
   };
 
   const handleCancelSearch = () => {
@@ -114,41 +66,11 @@ export default function RandomChat() {
 
     dispatch({ type: 'SEND_CHAT_MESSAGE', payload: text });
     if (!textToSend) setChatInput('');
-
-    // Trigger smart bot reply
-    setIsTyping(true);
-    const typingDelay = 1200 + Math.random() * 1500;
-
-    setTimeout(() => {
-      setIsTyping(false);
-      const bot = currentBotPeerRef.current || BOT_PEERS[0];
-      const botReply = bot.responses[Math.floor(Math.random() * bot.responses.length)];
-
-      const msg: ChatMessage = {
-        id: `m_reply_${Date.now()}`,
-        senderId: activeMatch.peerId,
-        content: botReply,
-        timestamp: new Date().toISOString(),
-        type: 'text',
-      };
-      dispatch({ type: 'RECEIVE_CHAT_MESSAGE', payload: msg });
-    }, typingDelay);
   };
 
   const handleReveal = () => {
     dispatch({ type: 'SEND_REVEAL_REQUEST' });
     setShowRevealModal(false);
-
-    // Bot accepts reveal after 1.8s
-    setTimeout(() => {
-      dispatch({ type: 'ACCEPT_REVEAL' });
-      confetti({
-        particleCount: 100,
-        spread: 70,
-        origin: { y: 0.6 },
-        colors: ['#C4956A', '#5BB5A2', '#5B8EC9', '#E8E4DF'],
-      });
-    }, 1800);
   };
 
   const handleNewIcebreaker = () => {
@@ -398,13 +320,7 @@ export default function RandomChat() {
             </div>
           ))}
 
-          {/* Typing Indicator */}
-          {isTyping && (
-            <div className="chat-typing">
-              <span /><span /><span />
-            </div>
-          )}
-
+          {/* Messages Feed */}
           <div ref={messagesEndRef} />
         </div>
 

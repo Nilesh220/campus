@@ -3,14 +3,14 @@
 // Connected with Supabase Backend with Realtime Support
 // ============================================================
 
-import { createContext, useContext, useReducer, type ReactNode, useCallback, useEffect } from 'react';
+import { createContext, useContext, useReducer, type ReactNode, useEffect } from 'react';
 import type {
   Post, Group, Announcement, DirectConversation,
   Notification, AnonMatch, NavTab, ThemeMode,
   ReactionType, RSVPStatus, PostCategory, ChatMessage, GroupMessage, User,
 } from '../types';
 import {
-  CURRENT_USER, USERS, generateAnonName, BOT_RESPONSES, ICEBREAKERS,
+  CURRENT_USER, USERS, generateAnonName,
 } from '../data/mockData';
 import { SupabaseService } from '../services/supabaseService';
 import { isSupabaseConfigured } from '../lib/supabase';
@@ -524,8 +524,6 @@ function appReducer(state: AppState, action: Action): AppState {
 interface AppContextType {
   state: AppState;
   dispatch: React.Dispatch<Action>;
-  startRandomMatch: (interests: string[]) => void;
-  sendBotResponse: () => void;
 }
 
 const AppContext = createContext<AppContextType | null>(null);
@@ -570,53 +568,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
-  const startRandomMatch = useCallback((interests: string[]) => {
-    dispatch({ type: 'START_MATCHING' });
-
-    const delay = 2000 + Math.random() * 2000;
-    setTimeout(() => {
-      const anon = generateAnonName();
-      const peer = USERS[Math.floor(Math.random() * (USERS.length - 1)) + 1];
-      const icebreaker = ICEBREAKERS[Math.floor(Math.random() * ICEBREAKERS.length)];
-
-      const match: AnonMatch = {
-        id: `match${Date.now()}`,
-        peerId: peer.id,
-        peerPseudonym: anon.name,
-        peerEmoji: anon.emoji,
-        matchedAt: new Date().toISOString(),
-        interestTags: interests,
-        messages: [
-          { id: `sys${Date.now()}`, senderId: 'system', content: `Connected with ${anon.name} ${anon.emoji}`, timestamp: new Date().toISOString(), type: 'system' },
-          { id: `ice${Date.now()}`, senderId: 'system', content: icebreaker, timestamp: new Date().toISOString(), type: 'icebreaker', isIcebreaker: true },
-        ],
-        status: 'chatting',
-        revealRequestSent: false,
-        revealRequestReceived: false,
-      };
-
-      dispatch({ type: 'MATCH_FOUND', payload: match });
-    }, delay);
-  }, []);
-
-  const sendBotResponse = useCallback(() => {
-    const delay = 1400 + Math.random() * 2000;
-    setTimeout(() => {
-      if (!state.activeMatch || state.activeMatch.status !== 'chatting') return;
-      const response = BOT_RESPONSES[Math.floor(Math.random() * BOT_RESPONSES.length)];
-      const msg: ChatMessage = {
-        id: `bot${Date.now()}`,
-        senderId: state.activeMatch.peerId,
-        content: response,
-        timestamp: new Date().toISOString(),
-        type: 'text',
-      };
-      dispatch({ type: 'RECEIVE_CHAT_MESSAGE', payload: msg });
-    }, delay);
-  }, [state.activeMatch]);
-
   return (
-    <AppContext.Provider value={{ state, dispatch, startRandomMatch, sendBotResponse }}>
+    <AppContext.Provider value={{ state, dispatch }}>
       {children}
     </AppContext.Provider>
   );
