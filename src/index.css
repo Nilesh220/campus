@@ -2843,63 +2843,80 @@ input, textarea, select { font-family: var(--font-primary); color: var(--text-pr
     display: none; /* Accessible in full view / drawer */
   }
 
-  /* Feed & Posts */
+  /* Prevent any horizontal screen wobbling on mobile */
+  html, body, #root, .app-layout, .app-main, .app-content {
+    max-width: 100vw;
+    overflow-x: hidden;
+  }
+
+  /* Force all inputs to 16px to prevent iOS Safari auto-zooming */
+  input, textarea, select {
+    font-size: 16px !important;
+  }
+
+  /* Feed & Posts — Generous, High-End Mobile Proportions */
   .app-content {
-    padding: 14px 10px 80px !important;
+    padding: 16px 14px 88px !important;
   }
 
   .feed-title {
-    font-size: 1.3rem;
+    font-size: 1.6rem !important;
+    font-weight: 800 !important;
   }
 
   .feed-subtitle {
-    font-size: 0.78rem;
-    line-height: 1.4;
+    font-size: 0.9rem !important;
+    line-height: 1.5 !important;
   }
 
   .create-post-trigger {
-    padding: 10px 14px;
+    padding: 14px 16px;
     border-radius: var(--radius-md);
-    margin-bottom: 12px;
+    margin-bottom: 14px;
   }
 
   .create-post-trigger .placeholder-text {
-    font-size: 0.8rem;
+    font-size: 0.92rem;
   }
 
   .post-card {
-    padding: 14px 12px;
-    border-radius: var(--radius-md);
-    margin-bottom: 10px;
+    padding: 18px 16px;
+    border-radius: var(--radius-xl);
+    margin-bottom: 14px;
+  }
+
+  .post-author {
+    font-size: 1rem !important;
   }
 
   .post-content {
-    font-size: 0.88rem;
-    line-height: 1.5;
+    font-size: 1.02rem !important;
+    line-height: 1.6 !important;
   }
 
   .feed-filters {
-    gap: 6px;
-    padding-bottom: 6px;
-    margin-bottom: 12px;
+    gap: 8px;
+    padding: 10px 0 6px;
+    margin-bottom: 14px;
   }
 
   .chip {
-    padding: 6px 12px;
-    font-size: 0.76rem;
+    padding: 8px 15px;
+    font-size: 0.85rem;
     font-weight: 600;
+    min-height: 38px;
   }
 
-  /* Modals */
+  /* Modals — Clean bottom-sheet or centered popup on phones */
   .modal {
     width: calc(100% - 20px) !important;
-    max-height: 90vh !important;
-    padding: 18px 14px !important;
-    border-radius: var(--radius-lg) !important;
+    max-height: 88vh !important;
+    padding: 22px 18px !important;
+    border-radius: 20px !important;
     margin: auto !important;
   }
 
   .auth-card {
-    padding: 20px 16px !important;
+    padding: 24px 18px !important;
   }
 }

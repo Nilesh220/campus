@@ -15,9 +15,11 @@ import UserProfileModal from './components/shared/UserProfileModal';
 import PreferencesModal from './components/shared/PreferencesModal';
 import AdminDashboard from './components/admin/AdminDashboard';
 import LandingPage from './components/landing/LandingPage';
+import { useMobileHistory } from './hooks/useMobileHistory';
 
 function AppContent() {
   const { state, dispatch } = useApp();
+  useMobileHistory();
 
   if (!state.currentUser) {
     return <LandingPage onLogin={(user) => dispatch({ type: 'LOGIN_USER', payload: user })} />;
