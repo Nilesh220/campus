@@ -133,7 +133,7 @@
 
 /* ── Global Styles ─────────────────────────────────────────── */
 html {
-  font-size: 15px;
+  font-size: 16px;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   scroll-behavior: smooth;
@@ -259,44 +259,45 @@ input, textarea, select { font-family: var(--font-primary); color: var(--text-pr
 }
 
 .sidebar-brand {
-  font-size: 1.25rem;
-  font-weight: 700;
+  font-size: 1.38rem;
+  font-weight: 800;
   color: var(--text-primary);
   letter-spacing: -0.5px;
 }
 
 .sidebar-brand-icon {
-  font-size: 1.3rem;
+  font-size: 1.4rem;
 }
 
 .sidebar-nav {
   padding: var(--space-md) var(--space-md);
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 4px;
   flex: 1;
 }
 
 .sidebar-label {
-  font-size: 0.65rem;
-  font-weight: 600;
+  font-size: 0.76rem;
+  font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 1.2px;
   color: var(--text-tertiary);
-  padding: var(--space-xl) var(--space-lg) var(--space-sm);
+  padding: var(--space-2xl) var(--space-lg) var(--space-xs);
 }
 
 .sidebar-item {
   display: flex;
   align-items: center;
-  gap: var(--space-md);
-  padding: 10px var(--space-lg);
+  gap: 14px;
+  padding: 13px 18px;
   border-radius: var(--radius-md);
   color: var(--text-secondary);
-  font-size: 0.87rem;
-  font-weight: 500;
+  font-size: 1.02rem;
+  font-weight: 600;
   transition: all var(--transition-fast);
   position: relative;
+  min-height: 48px;
 }
 
 .sidebar-item:hover {
@@ -307,7 +308,7 @@ input, textarea, select { font-family: var(--font-primary); color: var(--text-pr
 .sidebar-item.active {
   background: var(--accent-bg);
   color: var(--accent);
-  font-weight: 600;
+  font-weight: 700;
 }
 
 .sidebar-item.active::before {
@@ -316,24 +317,24 @@ input, textarea, select { font-family: var(--font-primary); color: var(--text-pr
   left: 0;
   top: 50%;
   transform: translateY(-50%);
-  width: 3px;
-  height: 50%;
+  width: 4px;
+  height: 55%;
   border-radius: var(--radius-pill);
   background: var(--accent);
 }
 
-.sidebar-item svg { width: 20px; height: 20px; flex-shrink: 0; opacity: 0.7; }
+.sidebar-item svg { width: 22px; height: 22px; flex-shrink: 0; opacity: 0.85; }
 .sidebar-item:hover svg,
 .sidebar-item.active svg { opacity: 1; }
 
 .sidebar-item .item-badge {
   margin-left: auto;
-  min-width: 20px;
-  height: 20px;
+  min-width: 22px;
+  height: 22px;
   border-radius: var(--radius-pill);
   background: var(--accent);
   color: white;
-  font-size: 0.62rem;
+  font-size: 0.72rem;
   font-weight: 700;
   display: flex;
   align-items: center;
@@ -342,18 +343,18 @@ input, textarea, select { font-family: var(--font-primary); color: var(--text-pr
 }
 
 .sidebar-footer {
-  padding: var(--space-lg) var(--space-xl);
+  padding: 16px 18px;
   border-top: 1px solid var(--border-light);
   display: flex;
   align-items: center;
-  gap: var(--space-md);
+  gap: 12px;
 }
 
 .sidebar-footer-info { flex: 1; min-width: 0; }
 
 .sidebar-footer-name {
-  font-size: 0.85rem;
-  font-weight: 600;
+  font-size: 0.96rem;
+  font-weight: 700;
   color: var(--text-primary);
   white-space: nowrap;
   overflow: hidden;
@@ -361,7 +362,8 @@ input, textarea, select { font-family: var(--font-primary); color: var(--text-pr
 }
 
 .sidebar-footer-major {
-  font-size: 0.72rem;
+  font-size: 0.8rem;
+  font-weight: 500;
   color: var(--text-tertiary);
   white-space: nowrap;
   overflow: hidden;
@@ -530,59 +532,6 @@ input, textarea, select { font-family: var(--font-primary); color: var(--text-pr
   border: 2px solid var(--bg-secondary);
 }
 
-/* ── Mobile Bottom Nav ─────────────────────────────────────── */
-.mobile-nav {
-  display: none;
-  position: fixed;
-  bottom: 0; left: 0; right: 0;
-  height: 68px;
-  background: var(--bg-secondary);
-  border-top: 1px solid var(--border-light);
-  z-index: 200;
-  padding: 0 var(--space-sm);
-}
-
-@media (max-width: 1024px) { .mobile-nav { display: flex; } }
-
-.mobile-nav-items { display: flex; align-items: center; justify-content: space-around; width: 100%; height: 100%; }
-
-.mobile-nav-item {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 3px;
-  padding: var(--space-sm) var(--space-md);
-  border-radius: var(--radius-md);
-  color: var(--text-tertiary);
-  font-size: 0.6rem;
-  font-weight: 600;
-  transition: color var(--transition-fast);
-  position: relative;
-}
-
-.mobile-nav-item:hover,
-.mobile-nav-item.active { color: var(--accent); }
-
-.mobile-nav-item.active::after {
-  content: '';
-  position: absolute;
-  top: -1px;
-  left: 50%; transform: translateX(-50%);
-  width: 24px; height: 2px;
-  border-radius: var(--radius-pill);
-  background: var(--accent);
-}
-
-.mobile-nav-item svg { width: 22px; height: 22px; }
-
-.mobile-nav-item .item-badge {
-  position: absolute;
-  top: 2px; right: 8px;
-  width: 7px; height: 7px;
-  border-radius: 50%;
-  background: var(--accent);
-}
-
 /* ============================================================
    CARDS — Flat, Clean Surface
    ============================================================ */
@@ -607,10 +556,11 @@ input, textarea, select { font-family: var(--font-primary); color: var(--text-pr
 .post-card {
   background: var(--bg-secondary);
   border: 1px solid var(--border-light);
-  border-radius: var(--radius-lg);
-  padding: var(--space-2xl) var(--space-2xl) var(--space-xl);
+  border-radius: var(--radius-xl);
+  padding: 20px 22px 18px;
   transition: border-color var(--transition-base), box-shadow var(--transition-base);
   animation: slide-up 0.4s ease-out both;
+  margin-bottom: 16px;
 }
 
 .post-card:hover {
@@ -621,76 +571,78 @@ input, textarea, select { font-family: var(--font-primary); color: var(--text-pr
 .post-header {
   display: flex;
   align-items: center;
-  gap: var(--space-md);
-  margin-bottom: var(--space-lg);
+  gap: 14px;
+  margin-bottom: 14px;
 }
 
 .post-avatar {
-  width: 40px; height: 40px;
+  width: 44px;
+  height: 44px;
   border-radius: var(--radius-pill);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 1.15rem;
+  font-size: 1.25rem;
   flex-shrink: 0;
 }
 
 .post-meta { flex: 1; min-width: 0; }
 
 .post-author {
-  font-size: 0.88rem;
-  font-weight: 600;
+  font-size: 1.02rem;
+  font-weight: 700;
   color: var(--text-primary);
   display: flex;
   align-items: center;
-  gap: var(--space-sm);
+  gap: 8px;
 }
 
 .post-author .anon-badge {
-  font-size: 0.6rem;
-  padding: 2px 8px;
+  font-size: 0.72rem;
+  padding: 3px 10px;
   border-radius: var(--radius-pill);
   background: var(--accent-bg-strong);
   color: var(--accent);
-  font-weight: 600;
+  font-weight: 700;
   letter-spacing: 0.3px;
 }
 
 .post-timestamp {
-  font-size: 0.73rem;
+  font-size: 0.82rem;
   color: var(--text-tertiary);
+  margin-top: 1px;
 }
 
 .post-category-tag {
-  padding: 4px var(--space-md);
+  padding: 5px 12px;
   border-radius: var(--radius-pill);
-  font-size: 0.68rem;
-  font-weight: 600;
+  font-size: 0.8rem;
+  font-weight: 700;
   margin-left: auto;
   flex-shrink: 0;
   letter-spacing: 0.2px;
 }
 
 .post-content {
-  font-size: 0.93rem;
-  line-height: 1.7;
+  font-size: 1.05rem;
+  line-height: 1.65;
   color: var(--text-primary);
-  margin-bottom: var(--space-lg);
+  margin-bottom: 14px;
   word-wrap: break-word;
 }
 
 .post-tags {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
-  margin-bottom: var(--space-lg);
+  gap: 8px;
+  margin-bottom: 14px;
 }
 
 .post-tag {
-  padding: 3px var(--space-md);
+  padding: 4px 12px;
   border-radius: var(--radius-pill);
-  font-size: 0.7rem;
-  font-weight: 500;
+  font-size: 0.8rem;
+  font-weight: 600;
   background: var(--bg-tertiary);
   color: var(--text-secondary);
   transition: all var(--transition-fast);
@@ -707,21 +659,26 @@ input, textarea, select { font-family: var(--font-primary); color: var(--text-pr
 .post-actions {
   display: flex;
   align-items: center;
-  gap: var(--space-xs);
-  padding-top: var(--space-lg);
+  gap: 8px;
+  padding-top: 12px;
   border-top: 1px solid var(--border-light);
 }
 
 .post-action-btn {
   display: flex;
   align-items: center;
-  gap: var(--space-xs);
-  padding: 6px var(--space-md);
-  border-radius: var(--radius-pill);
-  font-size: 0.8rem;
-  font-weight: 500;
-  color: var(--text-tertiary);
+  gap: 6px;
+  padding: 8px 14px;
+  border-radius: var(--radius-md);
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text-secondary);
   transition: all var(--transition-fast);
+}
+
+.post-action-btn svg {
+  width: 20px;
+  height: 20px;
 }
 
 .post-action-btn:hover {
@@ -850,7 +807,76 @@ input, textarea, select { font-family: var(--font-primary); color: var(--text-pr
   background: var(--bg-secondary);
 }
 
-.comment-input::placeholder { color: var(--text-tertiary); }
+/* ============================================================
+   FEED & STREAM COMPONENTS
+   ============================================================ */
+
+.feed-header {
+  margin-bottom: 20px;
+}
+
+.feed-title {
+  font-size: 1.75rem;
+  font-weight: 800;
+  color: var(--text-primary);
+  letter-spacing: -0.5px;
+  line-height: 1.2;
+}
+
+.feed-subtitle {
+  font-size: 0.95rem;
+  color: var(--text-secondary);
+  margin-top: 4px;
+  line-height: 1.5;
+}
+
+.feed-filters {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding: 14px 0 6px;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.feed-filters::-webkit-scrollbar {
+  display: none;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 8px 16px;
+  border-radius: var(--radius-pill);
+  font-size: 0.88rem;
+  font-weight: 600;
+  background: var(--bg-secondary);
+  color: var(--text-secondary);
+  border: 1px solid var(--border-light);
+  white-space: nowrap;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  min-height: 38px;
+}
+
+.chip:hover {
+  border-color: var(--accent);
+  color: var(--text-primary);
+  background: var(--bg-hover);
+}
+
+.chip.active {
+  background: var(--accent-bg-strong);
+  color: var(--accent);
+  border-color: var(--accent);
+  font-weight: 700;
+}
+
+.chip svg {
+  width: 17px;
+  height: 17px;
+}
 
 /* ── Create Post Trigger ───────────────────────────────────── */
 .create-post-trigger {
