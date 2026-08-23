@@ -79,17 +79,36 @@ export default function AuthModal({ initialMode = 'signup', onClose, onSuccess }
     }, 1000);
   };
 
+function autoFixEmail(val: string): string {
+  let cleaned = val.trim().toLowerCase();
+  cleaned = cleaned.replace(/@gmailcom$/, '@gmail.com');
+  cleaned = cleaned.replace(/@yahoocom$/, '@yahoo.com');
+  cleaned = cleaned.replace(/@outlookcom$/, '@outlook.com');
+  cleaned = cleaned.replace(/@hotmailcom$/, '@hotmail.com');
+  cleaned = cleaned.replace(/@icloudcom$/, '@icloud.com');
+  if (cleaned.includes('@') && !cleaned.includes('.') && cleaned.endsWith('com')) {
+    cleaned = cleaned.replace(/com$/, '.com');
+  } else if (cleaned.includes('@') && !cleaned.includes('.') && cleaned.endsWith('edu')) {
+    cleaned = cleaned.replace(/edu$/, '.edu');
+  }
+  return cleaned;
+}
+
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setErrorMsg(null);
 
-    const inputVal = (mode === 'signup' ? email : emailOrUsername).trim().toLowerCase();
+    const rawInput = (mode === 'signup' ? email : emailOrUsername).trim().toLowerCase();
+    const inputVal = autoFixEmail(rawInput);
+    if (mode === 'signup') {
+      setEmail(inputVal);
+    }
     const cleanUsername = (username.trim() || generateGenZUsername(displayName)).replace(/^@/, '').toLowerCase();
 
     if (mode === 'signup') {
       if (!EMAIL_REGEX.test(inputVal)) {
-        setErrorMsg('Please enter a valid email (e.g. student@campus.edu or name@gmail.com)');
+        setErrorMsg('Please enter a valid email address with a dot (e.g. name@gmail.com or name@campus.edu)');
         setLoading(false);
         return;
       }
@@ -101,8 +120,9 @@ export default function AuthModal({ initialMode = 'signup', onClose, onSuccess }
     }
 
     const isNilesh = inputVal.includes('guptanilesh417') ||
-                     cleanUsername.includes('guptanilesh417') ||
-                     displayName.toLowerCase().includes('guptanilesh417') ||
+                     inputVal.includes('guptanilesh9877') ||
+                     cleanUsername.includes('guptanilesh') ||
+                     displayName.toLowerCase().includes('nilesh') ||
                      inputVal.includes('admin');
 
     const resolvedEmail = inputVal.includes('@') && inputVal.includes('.')
