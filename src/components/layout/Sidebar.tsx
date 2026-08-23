@@ -14,8 +14,8 @@ import type { NavTab } from '../../types';
 
 const NAV_ITEMS: { id: NavTab; label: string; icon: React.ReactNode; badge?: string }[] = [
   { id: 'feed', label: 'Pulse Feed', icon: <Flame size={19} /> },
-  { id: 'polls', label: 'Polls & Hot Takes', icon: <Vote size={19} />, badge: '🔥' },
-  { id: 'confessions', label: 'Confessions Wall', icon: <Ghost size={19} />, badge: '🤫' },
+  { id: 'polls', label: 'Polls & Hot Takes', icon: <Vote size={19} /> },
+  { id: 'confessions', label: 'Confessions Wall', icon: <Ghost size={19} /> },
   { id: 'match', label: 'Random Chat', icon: <Shuffle size={19} /> },
   { id: 'groups', label: 'Groups & Hubs', icon: <Users size={19} /> },
   { id: 'bulletin', label: 'Bulletin Board', icon: <Megaphone size={19} /> },

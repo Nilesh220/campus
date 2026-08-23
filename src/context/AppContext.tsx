@@ -74,11 +74,34 @@ try {
   parsedConvs = [];
 }
 
+// Complete purge of any previous demo data
+if (typeof window !== 'undefined') {
+  try {
+    const rawPolls = localStorage.getItem('campussparks_polls');
+    if (rawPolls && (rawPolls.includes('poll_1') || rawPolls.includes('poll_2') || rawPolls.includes('poll_3') || rawPolls.includes('attendance') || rawPolls.includes('canteen'))) {
+      localStorage.removeItem('campussparks_polls');
+    }
+  } catch {}
+
+  try {
+    const rawConf = localStorage.getItem('campussparks_confessions');
+    if (rawConf && (rawConf.includes('cat memes') || rawConf.includes('green hoodie') || rawConf.includes('conf_1') || rawConf.includes('conf_2') || rawConf.includes('conf_3') || rawConf.includes('conf_4') || rawConf.includes('Midnight Phoenix') || rawConf.includes('Library Ghost') || rawConf.includes('Hostel 4 Ninja') || rawConf.includes('Chai Enthusiast'))) {
+      localStorage.removeItem('campussparks_confessions');
+    }
+  } catch {}
+}
+
 const savedPolls = typeof window !== 'undefined' ? localStorage.getItem('campussparks_polls') : null;
 let initialPollsData: Poll[] = [];
 try {
   if (savedPolls) {
-    initialPollsData = (JSON.parse(savedPolls) as Poll[]).filter(p => !p.id.startsWith('poll_1') && !p.id.startsWith('poll_2') && !p.id.startsWith('poll_3'));
+    initialPollsData = (JSON.parse(savedPolls) as Poll[]).filter(p => 
+      !p.id.startsWith('poll_1') && 
+      !p.id.startsWith('poll_2') && 
+      !p.id.startsWith('poll_3') && 
+      !p.question?.toLowerCase().includes('attendance') &&
+      !p.question?.toLowerCase().includes('canteen')
+    );
   }
 } catch {
   initialPollsData = [];
@@ -88,7 +111,16 @@ const savedConfessions = typeof window !== 'undefined' ? localStorage.getItem('c
 let initialConfessionsData: Confession[] = [];
 try {
   if (savedConfessions) {
-    initialConfessionsData = (JSON.parse(savedConfessions) as Confession[]).filter(c => !c.id.startsWith('conf_1') && !c.id.startsWith('conf_2') && !c.id.startsWith('conf_3') && !c.id.startsWith('conf_4'));
+    initialConfessionsData = (JSON.parse(savedConfessions) as Confession[]).filter(c => 
+      !c.id.startsWith('conf_1') && 
+      !c.id.startsWith('conf_2') && 
+      !c.id.startsWith('conf_3') && 
+      !c.id.startsWith('conf_4') && 
+      !c.content?.toLowerCase().includes('cat memes') && 
+      !c.content?.toLowerCase().includes('green hoodie') &&
+      !c.pseudonym?.toLowerCase().includes('midnight phoenix') &&
+      !c.pseudonym?.toLowerCase().includes('library ghost')
+    );
   }
 } catch {
   initialConfessionsData = [];
