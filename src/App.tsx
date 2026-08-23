@@ -1,8 +1,4 @@
-// ============================================================
-// UniPulse — Main App Component
-// ============================================================
-
-import { useEffect } from 'react';
+import { Component, useEffect, type ErrorInfo, type ReactNode } from 'react';
 import { AppProvider, useApp } from './context/AppContext';
 import Sidebar from './components/layout/Sidebar';
 import Navbar from './components/layout/Navbar';
@@ -19,6 +15,84 @@ import PreferencesModal from './components/shared/PreferencesModal';
 import AdminDashboard from './components/admin/AdminDashboard';
 import LandingPage from './components/landing/LandingPage';
 import { useMobileHistory } from './hooks/useMobileHistory';
+
+interface ErrorBoundaryProps {
+  children: ReactNode;
+}
+
+interface ErrorBoundaryState {
+  hasError: boolean;
+  error: Error | null;
+}
+
+class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
+  constructor(props: ErrorBoundaryProps) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+
+  static getDerivedStateFromError(error: Error): ErrorBoundaryState {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error: Error, errorInfo: ErrorInfo) {
+    console.error('CampusSparks caught runtime error:', error, errorInfo);
+  }
+
+  handleReset = () => {
+    try {
+      localStorage.removeItem('campussparks_polls');
+      localStorage.removeItem('campussparks_confessions');
+    } catch {}
+    window.location.hash = '';
+    window.location.reload();
+  };
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div style={{
+          minHeight: '100vh',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: 24,
+          textAlign: 'center',
+          background: '#0F172A',
+          color: '#FFFFFF',
+          fontFamily: 'system-ui, -apple-system, sans-serif',
+        }}>
+          <div style={{ fontSize: '3rem', marginBottom: 12 }}>⚡</div>
+          <h1 style={{ fontSize: '1.4rem', fontWeight: 800, marginBottom: 8 }}>
+            Restoring CampusSparks
+          </h1>
+          <p style={{ fontSize: '0.88rem', color: '#94A3B8', maxWidth: 380, marginBottom: 24, lineHeight: 1.5 }}>
+            A temporary render glitch occurred. Tap below to reload fresh.
+          </p>
+          <button
+            onClick={this.handleReset}
+            style={{
+              background: '#0D9488',
+              color: 'white',
+              border: 'none',
+              borderRadius: 9999,
+              padding: '12px 28px',
+              fontSize: '0.92rem',
+              fontWeight: 700,
+              cursor: 'pointer',
+              boxShadow: '0 4px 14px rgba(13, 148, 136, 0.4)',
+            }}
+          >
+            Reload CampusSparks 🔄
+          </button>
+        </div>
+      );
+    }
+
+    return this.props.children;
+  }
+}
 
 function AppContent() {
   const { state, dispatch } = useApp();
@@ -72,8 +146,11 @@ function AppContent() {
 
 export default function App() {
   return (
-    <AppProvider>
-      <AppContent />
-    </AppProvider>
+    <ErrorBoundary>
+      <AppProvider>
+        <AppContent />
+      </AppProvider>
+    </ErrorBoundary>
   );
 }
+

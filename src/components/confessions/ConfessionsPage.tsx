@@ -38,17 +38,21 @@ export default function ConfessionsPage() {
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
   // Sorting and filtering
-  let confessions = [...state.confessions];
+  let confessions = [...(state.confessions || [])];
   if (filter === 'trending') {
-    confessions.sort((a, b) => (b.upvotes + Object.values(b.reactions).reduce((s, v) => s + v, 0)) - (a.upvotes + Object.values(a.reactions).reduce((s, v) => s + v, 0)));
+    confessions.sort((a, b) => {
+      const aReactions = a.reactions ? Object.values(a.reactions).reduce((s, v) => s + (Number(v) || 0), 0) : 0;
+      const bReactions = b.reactions ? Object.values(b.reactions).reduce((s, v) => s + (Number(v) || 0), 0) : 0;
+      return ((b.upvotes || 0) + bReactions) - ((a.upvotes || 0) + aReactions);
+    });
   } else if (filter === 'newest') {
-    confessions.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    confessions.sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
   } else if (filter === 'upvoted') {
-    confessions.sort((a, b) => b.upvotes - a.upvotes);
+    confessions.sort((a, b) => (b.upvotes || 0) - (a.upvotes || 0));
   } else if (filter === 'crush') {
-    confessions = confessions.filter(c => c.tags.some(t => t.toLowerCase().includes('crush') || t.toLowerCase().includes('dating') || t.toLowerCase().includes('love')));
+    confessions = confessions.filter(c => c?.tags && Array.isArray(c.tags) && c.tags.some(t => typeof t === 'string' && (t.toLowerCase().includes('crush') || t.toLowerCase().includes('dating') || t.toLowerCase().includes('love'))));
   } else if (filter === 'hostel') {
-    confessions = confessions.filter(c => c.tags.some(t => t.toLowerCase().includes('hostel') || t.toLowerCase().includes('latenight') || t.toLowerCase().includes('night')));
+    confessions = confessions.filter(c => c?.tags && Array.isArray(c.tags) && c.tags.some(t => typeof t === 'string' && (t.toLowerCase().includes('hostel') || t.toLowerCase().includes('latenight') || t.toLowerCase().includes('night'))));
   }
 
   const handleUpvote = (id: string) => {

@@ -108,7 +108,7 @@ export default function Sidebar() {
           ))}
 
           {/* Web Push Notification Enable Prompt */}
-          {typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'default' && (
+          {notificationService.getStatus() === 'default' && (
             <button
               className="sidebar-item"
               onClick={() => notificationService.requestPermission()}

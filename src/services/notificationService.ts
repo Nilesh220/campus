@@ -13,13 +13,21 @@ class WebNotificationService {
   }
 
   public getStatus(): NotificationPermissionStatus {
-    if (!this.isSupported) return 'unsupported';
-    return Notification.permission as NotificationPermissionStatus;
+    try {
+      if (typeof window === 'undefined' || !('Notification' in window) || typeof Notification === 'undefined') {
+        return 'unsupported';
+      }
+      return (Notification.permission || 'unsupported') as NotificationPermissionStatus;
+    } catch {
+      return 'unsupported';
+    }
   }
 
   public async requestPermission(): Promise<boolean> {
-    if (!this.isSupported) return false;
     try {
+      if (typeof window === 'undefined' || !('Notification' in window) || typeof Notification === 'undefined') {
+        return false;
+      }
       const permission = await Notification.requestPermission();
       if (permission === 'granted') {
         this.sendNotification('🎉 Notifications Enabled!', {

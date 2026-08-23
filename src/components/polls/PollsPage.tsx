@@ -26,9 +26,10 @@ export default function PollsPage() {
   const [showCreateModal, setShowCreateModal] = useState(false);
 
   // Filter polls
-  const filteredPolls = state.polls.filter(p => {
+  const filteredPolls = (state.polls || []).filter(p => {
+    if (!p) return false;
     if (filter === 'all') return true;
-    if (filter === 'hottakes') return p.isHotTake;
+    if (filter === 'hottakes') return Boolean(p.isHotTake);
     return p.category === filter;
   });
 
