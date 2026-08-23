@@ -1,6 +1,6 @@
 // ============================================================
 // CampusSparks — Resend Email Delivery Service
-// Real API Integration with Resend Gateway + Smart Fallback
+// Real API Integration with Vercel Serverless + Resend Gateway
 // ============================================================
 
 const RESEND_API_KEY = import.meta.env.VITE_RESEND_API_KEY || '';
@@ -14,7 +14,7 @@ export interface SendEmailParams {
 
 export const EmailService = {
   /**
-   * Send an email via Resend API
+   * Send an email via Resend API (Direct Fallback)
    */
   async sendEmail({ to, subject, html, from = 'CampusSparks <auth@campussparks.com>' }: SendEmailParams): Promise<{ success: boolean; data?: any; error?: string }> {
     if (!RESEND_API_KEY) {
@@ -59,6 +59,30 @@ export const EmailService = {
     studentName: string = 'Student',
     type: 'signup' | 'signin' = 'signup'
   ): Promise<{ success: boolean; code: string; error?: string }> {
+    // 1. Try Vercel Serverless Function first (Bypasses browser CORS & protects key)
+    try {
+      const apiRes = await fetch('/api/send-otp', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          to: toEmail,
+          code,
+          name: studentName,
+          type,
+        }),
+      });
+
+      if (apiRes.ok) {
+        const apiData = await apiRes.json();
+        return { success: true, code, data: apiData } as any;
+      }
+    } catch (serverlessErr) {
+      console.warn('Serverless endpoint not reachable, falling back to direct API:', serverlessErr);
+    }
+
+    // 2. Fallback to Direct Resend API
     const isSignup = type === 'signup';
     const heading = isSignup ? 'Verify Your Student Account' : 'Your CampusSparks Login Code';
     const subtext = isSignup
