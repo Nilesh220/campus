@@ -154,16 +154,16 @@ export default function LandingPage({ onLogin }: { onLogin: (user: any) => void 
         <div className="landing-security-box">
           <ShieldCheck size={36} className="landing-security-icon" />
           <div className="landing-security-text">
-            <h3>Verified Campus Inboxes Only</h3>
+            <h3>Instant OTP Verified Campus Inboxes</h3>
             <p>
-              Every student confirms their college email domain (.edu, .ac.in, etc.) or PIN. No random outside spammers, no bots, completely private to universities.
+              Every student confirms their email with a secure 6-digit one-time passcode. No random outside spammers, no bots, completely student-friendly and private.
             </p>
           </div>
           <button
             className="btn btn-secondary btn-pill btn-sm"
             onClick={() => openAuth('signup')}
           >
-            <Lock size={14} /> Verify Student ID
+            <Lock size={14} /> Join Campus Today
           </button>
         </div>
       </section>

@@ -231,7 +231,7 @@ export default function AuthScreen({ onAuthenticated }: { onAuthenticated: (user
                 autoCorrect="off"
                 spellCheck={false}
                 required
-                placeholder="e.g. guptanilesh417@gmail.com"
+                placeholder="e.g. student@campus.edu"
                 value={email}
                 onChange={e => setEmail(e.target.value)}
               />

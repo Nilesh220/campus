@@ -25,6 +25,7 @@ export default function AdminDashboard({ onClose }: { onClose: () => void }) {
   const [modSearch, setModSearch] = useState('');
   const [modCategory, setModCategory] = useState<string>('all');
   const [studentSearch, setStudentSearch] = useState('');
+  const [studentFilter, setStudentFilter] = useState<'all' | 'verified' | 'unverified'>('all');
 
   // Announcement Form State
   const [broadcastTitle, setBroadcastTitle] = useState('');
@@ -48,26 +49,135 @@ export default function AdminDashboard({ onClose }: { onClose: () => void }) {
   const [newBannedWord, setNewBannedWord] = useState('');
   const [freezeAnonymous, setFreezeAnonymous] = useState(false);
 
-  // Live Student List from Supabase
+  // Live Student List from Supabase + Local Cache & Realtime Sync
   const [studentList, setStudentList] = useState<any[]>([]);
+  const [loadingStudents, setLoadingStudents] = useState(false);
+
+  const fetchStudents = async () => {
+    setLoadingStudents(true);
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.warn('Profiles fetch warning:', error);
+      }
+
+      const mappedList: any[] = [];
+      const seenIds = new Set<string>();
+      const seenUsernames = new Set<string>();
+
+      if (data && data.length > 0) {
+        data.forEach(u => {
+          seenIds.add(u.id);
+          seenUsernames.add(u.username);
+
+          const isUnverified = (u.bio && (u.bio.toLowerCase().includes('pending') || u.bio.toLowerCase().includes('unverified'))) ||
+                               (Array.isArray(u.hobbies) && u.hobbies.some((h: string) => h.toLowerCase().includes('pending') || h.toLowerCase().includes('unverified')));
+          const isVerified = !isUnverified;
+          const isSuperAdmin = u.email?.includes('guptanilesh417') || u.username === 'campus_admin' || u.username?.includes('admin');
+
+          let resolvedEmail = u.email;
+          if (!resolvedEmail || !resolvedEmail.includes('@')) {
+            if (u.bio && u.bio.includes('@')) {
+              resolvedEmail = u.bio.split('•').pop()?.trim() || `${u.username}@gmail.com`;
+            } else if (Array.isArray(u.hobbies) && u.hobbies.find((h: string) => h.includes('@'))) {
+              resolvedEmail = u.hobbies.find((h: string) => h.includes('@'));
+            } else {
+              resolvedEmail = `${u.username}@gmail.com`;
+            }
+          }
+
+          mappedList.push({
+            id: u.id,
+            username: u.username,
+            displayName: u.display_name || u.username,
+            avatar: u.avatar || '🎓',
+            major: u.major || 'Computer Science',
+            graduationYear: u.graduation_year || 2027,
+            college: u.college || 'Campus University',
+            email: resolvedEmail,
+            isVerified,
+            status: isSuperAdmin ? 'Super Admin' : (isVerified ? 'Verified Student' : 'Pending OTP'),
+            pulseScore: u.pulse_score || (isVerified ? 100 : 50),
+            isBanned: false,
+          });
+        });
+      }
+
+      // Merge locally stored registered students so directory is always up to date
+      try {
+        const localUsers = JSON.parse(localStorage.getItem('campus_registered_users') || '[]');
+        localUsers.forEach((lu: any) => {
+          if (!seenUsernames.has(lu.username) && !seenIds.has(lu.id)) {
+            seenUsernames.add(lu.username);
+            const isUnverified = lu.isVerified === false ||
+              (lu.bio && (lu.bio.toLowerCase().includes('pending') || lu.bio.toLowerCase().includes('unverified')));
+            const isVerified = !isUnverified;
+
+            mappedList.push({
+              id: lu.id,
+              username: lu.username,
+              displayName: lu.displayName || lu.username,
+              avatar: lu.avatar || '🎓',
+              major: lu.major || 'Computer Science',
+              graduationYear: lu.graduationYear || 2027,
+              college: lu.college || 'Campus University',
+              email: lu.email || `${lu.username}@gmail.com`,
+              isVerified,
+              status: lu.isAdmin ? 'Super Admin' : (isVerified ? 'Verified Student' : 'Pending OTP'),
+              pulseScore: lu.pulseScore || (isVerified ? 100 : 50),
+              isBanned: false,
+            });
+          }
+        });
+      } catch (e) {
+        // ignore
+      }
+
+      // Ensure active current user is in the list
+      if (state.currentUser && !seenUsernames.has(state.currentUser.username) && !seenIds.has(state.currentUser.id)) {
+        mappedList.unshift({
+          id: state.currentUser.id,
+          username: state.currentUser.username,
+          displayName: state.currentUser.displayName,
+          avatar: state.currentUser.avatar || '🎓',
+          major: state.currentUser.major || 'Computer Science',
+          graduationYear: state.currentUser.graduationYear || 2027,
+          college: state.currentUser.college || 'Campus University',
+          email: state.currentUser.email || `${state.currentUser.username}@gmail.com`,
+          isVerified: true,
+          status: state.currentUser.isAdmin ? 'Super Admin' : 'Verified Student',
+          pulseScore: state.currentUser.pulseScore || 100,
+          isBanned: false,
+        });
+      }
+
+      setStudentList(mappedList);
+    } catch (err) {
+      console.warn('Student list fetch catch notice:', err);
+    } finally {
+      setLoadingStudents(false);
+    }
+  };
 
   useEffect(() => {
-    supabase.from('profiles').select('*').then(({ data }) => {
-      if (data && data.length > 0) {
-        setStudentList(data.map(u => ({
-          id: u.id,
-          username: u.username,
-          displayName: u.display_name,
-          avatar: u.avatar || '🎓',
-          major: u.major || 'Computer Science',
-          email: u.email || `${u.username}@campus.edu`,
-          status: (u.email?.includes('guptanilesh417') || u.username === 'campus_admin') ? 'Super Admin' : 'Registered Student',
-          pulseScore: u.pulse_score || 100,
-          isBanned: false,
-        })));
-      }
-    });
-  }, []);
+    fetchStudents();
+
+    // Subscribe to realtime profile changes
+    const channel = supabase
+      .channel('profiles-admin-sync')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, () => {
+        fetchStudents();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [state.currentUser]);
 
   // ── Handlers ───────────────────────────────────────────────
   const handleDeletePost = (postId: string) => {
@@ -150,6 +260,32 @@ export default function AdminDashboard({ onClose }: { onClose: () => void }) {
     setStudentList(prev => prev.map(s => s.id === studentId ? { ...s, status: s.status === 'Club Lead' ? 'Active Student' : 'Club Lead' } : s));
   };
 
+  const handleApproveStudent = async (studentId: string, studentUsername: string) => {
+    setStudentList(prev => prev.map(s => (s.id === studentId || s.username === studentUsername) ? {
+      ...s,
+      isVerified: true,
+      status: s.status === 'Super Admin' ? 'Super Admin' : 'Verified Student',
+      pulseScore: Math.max(s.pulseScore, 100),
+    } : s));
+
+    try {
+      await supabase.from('profiles').update({
+        bio: 'Verified Campus Student',
+        hobbies: ['Verified', 'Active Student'],
+        pulse_score: 100,
+        is_online: true,
+      }).eq('username', studentUsername);
+    } catch (err) {
+      console.warn('Approve notice:', err);
+    }
+
+    try {
+      const localUsers = JSON.parse(localStorage.getItem('campus_registered_users') || '[]');
+      const updated = localUsers.map((lu: any) => lu.username === studentUsername ? { ...lu, isVerified: true } : lu);
+      localStorage.setItem('campus_registered_users', JSON.stringify(updated));
+    } catch (e) {}
+  };
+
   const handleAddBannedWord = () => {
     if (newBannedWord.trim() && !bannedWords.includes(newBannedWord.trim().toLowerCase())) {
       setBannedWords([...bannedWords, newBannedWord.trim().toLowerCase()]);
@@ -172,11 +308,20 @@ export default function AdminDashboard({ onClose }: { onClose: () => void }) {
     return matchesSearch && matchesCat;
   });
 
-  const filteredStudents = studentList.filter(s =>
-    studentSearch === '' ||
-    s.displayName.toLowerCase().includes(studentSearch.toLowerCase()) ||
-    s.major.toLowerCase().includes(studentSearch.toLowerCase())
-  );
+  const filteredStudents = studentList.filter(s => {
+    const query = studentSearch.toLowerCase();
+    const matchesSearch = studentSearch === '' ||
+      s.displayName.toLowerCase().includes(query) ||
+      s.username.toLowerCase().includes(query) ||
+      (s.email && s.email.toLowerCase().includes(query)) ||
+      s.major.toLowerCase().includes(query);
+
+    const matchesFilter = studentFilter === 'all' ||
+      (studentFilter === 'verified' && s.isVerified) ||
+      (studentFilter === 'unverified' && !s.isVerified);
+
+    return matchesSearch && matchesFilter;
+  });
 
   return (
     <div className="modal-overlay" onClick={onClose}>
@@ -226,7 +371,7 @@ export default function AdminDashboard({ onClose }: { onClose: () => void }) {
                 </span>
               </div>
               <div style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)', marginTop: 2 }}>
-                Primary Admin: <strong style={{ color: 'var(--text-secondary)' }}>guptanilesh417@gmail.com (Nilesh Gupta)</strong> • Full Authority
+                Primary Admin: <strong style={{ color: 'var(--text-secondary)' }}>Campus Lead Administrator</strong> • Full Authority
               </div>
             </div>
           </div>
@@ -426,94 +571,184 @@ export default function AdminDashboard({ onClose }: { onClose: () => void }) {
             </div>
           )}
 
-          {/* ════════ TAB 3: STUDENT DIRECTORY ════════ */}
+          {/* ════════ TAB 3: STUDENT DIRECTORY (VERIFIED & UNVERIFIED) ════════ */}
           {activeTab === 'students' && (
             <div>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: 10 }}>
-                <h3 style={{ fontSize: '1.05rem', fontWeight: 700, margin: 0 }}>
-                  Campus Student Directory & Permissions
-                </h3>
-                <div className="auth-input-wrapper" style={{ width: 240, padding: '4px 8px' }}>
-                  <Search size={14} />
-                  <input
-                    type="text"
-                    placeholder="Search student or major..."
-                    style={{ fontSize: '0.78rem' }}
-                    value={studentSearch}
-                    onChange={e => setStudentSearch(e.target.value)}
-                  />
+                <div>
+                  <h3 style={{ fontSize: '1.05rem', fontWeight: 700, margin: 0 }}>
+                    Campus Student Directory ({studentList.length})
+                  </h3>
+                  <div style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)', marginTop: 2 }}>
+                    Showing {filteredStudents.length} students • {studentList.filter(s => s.isVerified).length} Verified • {studentList.filter(s => !s.isVerified).length} Pending Verification
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                  <button
+                    type="button"
+                    className="btn btn-sm btn-ghost btn-pill"
+                    onClick={fetchStudents}
+                    disabled={loadingStudents}
+                    style={{ fontSize: '0.74rem', display: 'flex', alignItems: 'center', gap: 5, padding: '5px 12px' }}
+                  >
+                    <RefreshCw size={13} className={loadingStudents ? 'spin' : ''} />
+                    {loadingStudents ? 'Syncing...' : 'Refresh Directory'}
+                  </button>
+
+                  <div className="auth-input-wrapper" style={{ width: 220, padding: '4px 8px' }}>
+                    <Search size={14} />
+                    <input
+                      type="text"
+                      placeholder="Search student or email..."
+                      style={{ fontSize: '0.78rem' }}
+                      value={studentSearch}
+                      onChange={e => setStudentSearch(e.target.value)}
+                    />
+                  </div>
                 </div>
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 12 }}>
-                {filteredStudents.map(student => (
-                  <div
-                    key={student.id}
-                    className="card"
-                    style={{
-                      padding: 16,
-                      background: 'var(--bg-secondary)',
-                      opacity: student.isBanned ? 0.6 : 1,
-                      border: student.status === 'Super Admin' ? '1.5px solid var(--accent)' : '1px solid var(--border-light)',
-                    }}
+              {/* Status Filter Buttons */}
+              <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
+                {[
+                  { key: 'all', label: `All Students (${studentList.length})` },
+                  { key: 'verified', label: `🟢 Verified (${studentList.filter(s => s.isVerified).length})` },
+                  { key: 'unverified', label: `🟡 Pending OTP (${studentList.filter(s => !s.isVerified).length})` },
+                ].map(f => (
+                  <button
+                    key={f.key}
+                    type="button"
+                    className={`btn btn-sm btn-pill ${studentFilter === f.key ? 'btn-primary' : 'btn-ghost'}`}
+                    style={{ fontSize: '0.74rem', padding: '4px 12px' }}
+                    onClick={() => setStudentFilter(f.key as any)}
                   >
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                        <span style={{ fontSize: '1.6rem' }}>{student.avatar}</span>
-                        <div>
-                          <div style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--text-primary)' }}>
-                            {student.displayName}
-                          </div>
-                          <div style={{ fontSize: '0.72rem', color: 'var(--text-tertiary)' }}>
-                            {student.major} • Class of {student.graduationYear}
-                          </div>
-                        </div>
-                      </div>
-                      <span className="badge" style={{
-                        fontSize: '0.68rem',
-                        background: student.isBanned ? 'rgba(199, 92, 92, 0.15)' : student.status === 'Super Admin' ? 'var(--accent-bg-strong)' : 'var(--bg-tertiary)',
-                        color: student.isBanned ? 'var(--color-error)' : student.status === 'Super Admin' ? 'var(--accent)' : 'var(--text-secondary)',
-                      }}>
-                        {student.isBanned ? 'BANNED' : student.status}
-                      </span>
-                    </div>
-
-                    <div style={{ fontSize: '0.74rem', color: 'var(--text-secondary)', marginBottom: 12 }}>
-                      Pulse Score: <strong style={{ color: 'var(--accent)' }}>{student.pulseScore}</strong> • College: {student.college}
-                    </div>
-
-                    <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                      <button
-                        className="btn btn-sm btn-ghost btn-pill"
-                        style={{ fontSize: '0.7rem' }}
-                        onClick={() => handleRewardScore(student.id)}
-                      >
-                        <Award size={13} /> +50 Pulse
-                      </button>
-
-                      {student.status !== 'Super Admin' && (
-                        <>
-                          <button
-                            className="btn btn-sm btn-ghost btn-pill"
-                            style={{ fontSize: '0.7rem' }}
-                            onClick={() => handlePromoteLead(student.id)}
-                          >
-                            <UserCheck size={13} /> {student.status === 'Club Lead' ? 'Revoke Lead' : 'Make Lead'}
-                          </button>
-
-                          <button
-                            className="btn btn-sm btn-ghost btn-pill"
-                            style={{ fontSize: '0.7rem', color: student.isBanned ? '#5BB5A2' : 'var(--color-error)' }}
-                            onClick={() => handleToggleBan(student.id)}
-                          >
-                            <Ban size={13} /> {student.isBanned ? 'Unban' : 'Ban'}
-                          </button>
-                        </>
-                      )}
-                    </div>
-                  </div>
+                    {f.label}
+                  </button>
                 ))}
               </div>
+
+              {filteredStudents.length === 0 ? (
+                <div className="card" style={{ padding: 36, textAlign: 'center', background: 'var(--bg-secondary)', color: 'var(--text-secondary)' }}>
+                  <Users size={32} style={{ margin: '0 auto 10px', opacity: 0.5 }} />
+                  <div style={{ fontWeight: 600, fontSize: '0.95rem' }}>No students found</div>
+                  <div style={{ fontSize: '0.78rem', marginTop: 4 }}>
+                    {studentSearch ? `No matches for "${studentSearch}"` : 'No registered or pending students found in this filter.'}
+                  </div>
+                </div>
+              ) : (
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(290px, 1fr))', gap: 12 }}>
+                  {filteredStudents.map(student => (
+                    <div
+                      key={student.id || student.username}
+                      className="card"
+                      style={{
+                        padding: 16,
+                        background: 'var(--bg-secondary)',
+                        opacity: student.isBanned ? 0.6 : 1,
+                        border: student.status === 'Super Admin'
+                          ? '1.5px solid var(--accent)'
+                          : !student.isVerified
+                            ? '1.5px dashed rgba(245, 158, 11, 0.5)'
+                            : '1px solid var(--border-light)',
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                          <span style={{ fontSize: '1.6rem' }}>{student.avatar || '🎓'}</span>
+                          <div>
+                            <div style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--text-primary)' }}>
+                              {student.displayName}
+                            </div>
+                            <div style={{ fontSize: '0.72rem', color: 'var(--text-tertiary)' }}>
+                              @{student.username} • {student.major} • Class of {student.graduationYear || '2027'}
+                            </div>
+                          </div>
+                        </div>
+                        <span className="badge" style={{
+                          fontSize: '0.68rem',
+                          fontWeight: 700,
+                          background: student.isBanned
+                            ? 'rgba(199, 92, 92, 0.15)'
+                            : student.status === 'Super Admin'
+                              ? 'var(--accent-bg-strong)'
+                              : student.isVerified
+                                ? 'rgba(16, 185, 129, 0.15)'
+                                : 'rgba(245, 158, 11, 0.15)',
+                          color: student.isBanned
+                            ? 'var(--color-error)'
+                            : student.status === 'Super Admin'
+                              ? 'var(--accent)'
+                              : student.isVerified
+                                ? '#10B981'
+                                : '#F59E0B',
+                        }}>
+                          {student.isBanned ? 'BANNED' : student.status === 'Super Admin' ? '⚡ Super Admin' : student.isVerified ? '✓ Verified' : '⚠️ Pending OTP'}
+                        </span>
+                      </div>
+
+                      <div style={{ fontSize: '0.74rem', color: 'var(--text-secondary)', marginBottom: 6 }}>
+                        Email: <strong style={{ color: 'var(--text-primary)' }}>{student.email}</strong>
+                      </div>
+
+                      <div style={{ fontSize: '0.74rem', color: 'var(--text-secondary)', marginBottom: 12 }}>
+                        Pulse Score: <strong style={{ color: 'var(--accent)' }}>{student.pulseScore || 100}</strong> • College: {student.college || 'Campus University'}
+                      </div>
+
+                      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                        {!student.isVerified && (
+                          <button
+                            type="button"
+                            className="btn btn-sm btn-pill"
+                            style={{
+                              background: 'rgba(16, 185, 129, 0.16)',
+                              color: '#10B981',
+                              border: '1px solid #10B981',
+                              fontSize: '0.7rem',
+                              fontWeight: 700,
+                              padding: '3px 10px',
+                            }}
+                            onClick={() => handleApproveStudent(student.id, student.username)}
+                          >
+                            ✓ Approve & Verify
+                          </button>
+                        )}
+
+                        <button
+                          type="button"
+                          className="btn btn-sm btn-ghost btn-pill"
+                          style={{ fontSize: '0.7rem' }}
+                          onClick={() => handleRewardScore(student.id)}
+                        >
+                          <Award size={13} /> +50 Pulse
+                        </button>
+
+                        {student.status !== 'Super Admin' && (
+                          <>
+                            <button
+                              type="button"
+                              className="btn btn-sm btn-ghost btn-pill"
+                              style={{ fontSize: '0.7rem' }}
+                              onClick={() => handlePromoteLead(student.id)}
+                            >
+                              <UserCheck size={13} /> {student.status === 'Club Lead' ? 'Revoke Lead' : 'Make Lead'}
+                            </button>
+
+                            <button
+                              type="button"
+                              className="btn btn-sm btn-ghost btn-pill"
+                              style={{ fontSize: '0.7rem', color: student.isBanned ? '#5BB5A2' : 'var(--color-error)' }}
+                              onClick={() => handleToggleBan(student.id)}
+                            >
+                              <Ban size={13} /> {student.isBanned ? 'Unban' : 'Ban'}
+                            </button>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           )}
 

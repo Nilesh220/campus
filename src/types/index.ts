@@ -32,6 +32,7 @@ export interface User {
   joinedAt: string;
   email?: string;
   isAdmin?: boolean;
+  isVerified?: boolean;
 }
 
 export interface Badge {
