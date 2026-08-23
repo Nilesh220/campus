@@ -1,10 +1,10 @@
 // ============================================================
-// Random Student Chat — Ultra-Fast Supabase Realtime Matchmaking
-// Connects real students across any device, network, or browser!
+// Random Student Chat — Supabase Realtime 1-on-1 Matchmaking
+// Guaranteed Device-Unique Session IDs & Realtime WebSocket Pairing
 // ============================================================
 
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { Send, Sparkles, UserPlus, SkipForward, X, Zap, Shield, MessageSquareQuote, RotateCcw, Copy, Check, KeyRound } from 'lucide-react';
+import { Send, Sparkles, UserPlus, SkipForward, X, Zap, Shield, MessageSquareQuote, RotateCcw, Copy, Check, KeyRound, Radio } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { INTEREST_TAGS, ICEBREAKERS, CURRENT_USER, generateAnonName } from '../../data/mockData';
 import { supabase } from '../../lib/supabase';
@@ -14,7 +14,7 @@ const SEARCHING_TIPS = [
   'Broadcasting live across campus dorms & departments...',
   'Tip: Select interest tags above to match by common vibe.',
   'Your identity stays 100% anonymous until both sides agree to reveal.',
-  'Waiting for a peer to hit Start Random Chat or join your room code...',
+  'Realtime WebSocket connection active — waiting for peer...',
 ];
 
 const QUICK_STARTERS = [
@@ -34,7 +34,7 @@ export default function RandomChat() {
   const [copiedLink, setCopiedLink] = useState(false);
   const [peerRevealRequested, setPeerRevealRequested] = useState(false);
   const [customRoomCode, setCustomRoomCode] = useState('');
-  const [showRoomCodeInput, setShowRoomCodeInput] = useState(false);
+  const [activeTabMode, setActiveTabMode] = useState<'auto' | 'code'>('auto');
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const lobbyChannelRef = useRef<any>(null);
@@ -43,7 +43,8 @@ export default function RandomChat() {
   const isMatchingRef = useRef(false);
 
   const me = state.currentUser || CURRENT_USER;
-  const myUserId = useRef(me.id || `anon_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`).current;
+  // Guarantees every single device/tab has a 100% unique session ID regardless of login state!
+  const mySessionId = useRef(`sess_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`).current;
   const myAnonProfile = useRef(generateAnonName()).current;
 
   const scrollToBottom = useCallback(() => {
@@ -113,14 +114,14 @@ export default function RandomChat() {
     dispatch({ type: 'MATCH_FOUND', payload: matchData });
 
     // Join dedicated room WebSocket
-    const room = supabase.channel(`campus_room_${roomId}`, {
+    const room = supabase.channel(`campus_live_room_${roomId}`, {
       config: { broadcast: { ack: true } },
     });
     roomChannelRef.current = room;
 
     room
       .on('broadcast', { event: 'CHAT_MSG' }, ({ payload }) => {
-        if (payload.senderId !== myUserId) {
+        if (payload.sessionId !== mySessionId) {
           dispatch({ type: 'RECEIVE_CHAT_MESSAGE', payload });
         }
       })
@@ -128,7 +129,7 @@ export default function RandomChat() {
         dispatch({ type: 'RECEIVE_CHAT_MESSAGE', payload });
       })
       .on('broadcast', { event: 'REVEAL_REQ' }, ({ payload }) => {
-        if (payload.senderId !== myUserId) {
+        if (payload.sessionId !== mySessionId) {
           setPeerRevealRequested(true);
         }
       })
@@ -136,7 +137,7 @@ export default function RandomChat() {
         dispatch({ type: 'ACCEPT_REVEAL' });
       })
       .on('broadcast', { event: 'PEER_LEFT' }, ({ payload }) => {
-        if (payload.senderId !== myUserId) {
+        if (payload.sessionId !== mySessionId) {
           const sysMsg: ChatMessage = {
             id: `left_${Date.now()}`,
             senderId: 'system',
@@ -148,7 +149,7 @@ export default function RandomChat() {
         }
       })
       .subscribe();
-  }, [myUserId, dispatch]);
+  }, [mySessionId, dispatch]);
 
   // ── Matchmaking Engine ────────────────────────────────────────
   const handleStartMatch = useCallback((specificRoomCode?: string) => {
@@ -156,15 +157,15 @@ export default function RandomChat() {
     setPeerRevealRequested(false);
     dispatch({ type: 'START_MATCHING' });
 
-    // If specific room code given (e.g. 4-digit friend code), connect directly
+    // 1. Direct Room Code Match (Friend Code)
     if (specificRoomCode && specificRoomCode.trim()) {
       const cleanCode = specificRoomCode.trim().toUpperCase();
-      const roomId = `friend_code_${cleanCode}`;
+      const roomId = `friend_room_${cleanCode}`;
       connectToRoom(roomId, `peer_${cleanCode}`, 'Campus Friend 🤝', '⚡', selectedInterests);
       return;
     }
 
-    // Cleanup previous lobby
+    // 2. Automatic Matchmaking Lobby
     if (heartbeatIntervalRef.current) {
       clearInterval(heartbeatIntervalRef.current);
       heartbeatIntervalRef.current = null;
@@ -174,16 +175,16 @@ export default function RandomChat() {
       lobbyChannelRef.current = null;
     }
 
-    const lobby = supabase.channel('campus_roulette_lobby_v2', {
+    const lobby = supabase.channel('campus_roulette_lobby_v3', {
       config: {
         broadcast: { ack: false },
-        presence: { key: myUserId },
+        presence: { key: mySessionId },
       },
     });
 
     lobbyChannelRef.current = lobby;
 
-    // 1. Presence Sync Handler
+    // Presence Sync
     lobby
       .on('presence', { event: 'sync' }, () => {
         if (isMatchingRef.current) return;
@@ -197,17 +198,18 @@ export default function RandomChat() {
           }
         });
 
-        const peers = searchers.filter(s => s.userId !== myUserId);
+        const peers = searchers.filter(s => s.sessionId !== mySessionId);
         if (peers.length > 0) {
           const peer = peers[0];
-          if (myUserId < peer.userId) {
+          // Deterministic coordinator pattern by sorting unique session IDs
+          if (mySessionId < peer.sessionId) {
             const roomId = `auto_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
             lobby.send({
               type: 'broadcast',
               event: 'MATCH_PAIRED',
               payload: {
-                userA: myUserId,
-                userB: peer.userId,
+                sessionA: mySessionId,
+                sessionB: peer.sessionId,
                 roomId,
                 userAPseudonym: myAnonProfile.name,
                 userAEmoji: myAnonProfile.emoji,
@@ -219,19 +221,18 @@ export default function RandomChat() {
           }
         }
       })
-      // 2. Active Heartbeat Broadcast for Instant Peer Discovery
+      // Active Pulse Heartbeat
       .on('broadcast', { event: 'SEARCH_PULSE' }, ({ payload }) => {
         if (isMatchingRef.current) return;
-        if (payload.userId !== myUserId) {
-          // If we see another searching peer and we have smaller userId, we pair!
-          if (myUserId < payload.userId) {
+        if (payload.sessionId !== mySessionId) {
+          if (mySessionId < payload.sessionId) {
             const roomId = `pulse_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
             lobby.send({
               type: 'broadcast',
               event: 'MATCH_PAIRED',
               payload: {
-                userA: myUserId,
-                userB: payload.userId,
+                sessionA: mySessionId,
+                sessionB: payload.sessionId,
                 roomId,
                 userAPseudonym: myAnonProfile.name,
                 userAEmoji: myAnonProfile.emoji,
@@ -243,12 +244,12 @@ export default function RandomChat() {
           }
         }
       })
-      // 3. Match Paired Trigger
+      // Pair Found Event
       .on('broadcast', { event: 'MATCH_PAIRED' }, ({ payload }) => {
         if (isMatchingRef.current) return;
-        if (payload.userA === myUserId || payload.userB === myUserId) {
-          const isUserA = payload.userA === myUserId;
-          const peerId = isUserA ? payload.userB : payload.userA;
+        if (payload.sessionA === mySessionId || payload.sessionB === mySessionId) {
+          const isUserA = payload.sessionA === mySessionId;
+          const peerId = isUserA ? payload.sessionB : payload.sessionA;
           const peerPseudonym = isUserA ? payload.userBPseudonym : payload.userAPseudonym;
           const peerEmoji = isUserA ? payload.userBEmoji : payload.userAEmoji;
           const roomId = payload.roomId;
@@ -258,44 +259,47 @@ export default function RandomChat() {
       })
       .subscribe(async status => {
         if (status === 'SUBSCRIBED') {
-          // Track presence
+          // Track unique presence
           await lobby.track({
-            userId: myUserId,
+            sessionId: mySessionId,
+            userId: me.id,
             pseudonym: myAnonProfile.name,
             emoji: myAnonProfile.emoji,
             interests: selectedInterests,
             joinedAt: Date.now(),
           });
 
-          // Send immediate search pulse
+          // Immediate pulse broadcast
           lobby.send({
             type: 'broadcast',
             event: 'SEARCH_PULSE',
             payload: {
-              userId: myUserId,
+              sessionId: mySessionId,
+              userId: me.id,
               pseudonym: myAnonProfile.name,
               emoji: myAnonProfile.emoji,
               interests: selectedInterests,
             },
           });
 
-          // Send heartbeat every 1.5 seconds to guarantee connection
+          // Heartbeat every 1.2 seconds
           heartbeatIntervalRef.current = setInterval(() => {
             if (isMatchingRef.current) return;
             lobby.send({
               type: 'broadcast',
               event: 'SEARCH_PULSE',
               payload: {
-                userId: myUserId,
+                sessionId: mySessionId,
+                userId: me.id,
                 pseudonym: myAnonProfile.name,
                 emoji: myAnonProfile.emoji,
                 interests: selectedInterests,
               },
             });
-          }, 1500);
+          }, 1200);
         }
       });
-  }, [myUserId, myAnonProfile, selectedInterests, dispatch, connectToRoom]);
+  }, [mySessionId, myAnonProfile, selectedInterests, me.id, dispatch, connectToRoom]);
 
   // Cleanup on unmount
   useEffect(() => {
@@ -332,7 +336,7 @@ export default function RandomChat() {
 
     const msg: ChatMessage = {
       id: `msg_${Date.now()}`,
-      senderId: myUserId,
+      senderId: mySessionId,
       content: text.trim(),
       timestamp: new Date().toISOString(),
       type: 'text',
@@ -344,7 +348,7 @@ export default function RandomChat() {
       roomChannelRef.current.send({
         type: 'broadcast',
         event: 'CHAT_MSG',
-        payload: msg,
+        payload: { ...msg, sessionId: mySessionId },
       });
     }
 
@@ -360,7 +364,7 @@ export default function RandomChat() {
         type: 'broadcast',
         event: 'REVEAL_REQ',
         payload: {
-          senderId: myUserId,
+          sessionId: mySessionId,
           profile: {
             id: me.id,
             displayName: me.displayName,
@@ -381,7 +385,7 @@ export default function RandomChat() {
       roomChannelRef.current.send({
         type: 'broadcast',
         event: 'REVEAL_ACCEPT',
-        payload: { senderId: myUserId },
+        payload: { sessionId: mySessionId },
       });
     }
   };
@@ -412,7 +416,7 @@ export default function RandomChat() {
       roomChannelRef.current.send({
         type: 'broadcast',
         event: 'PEER_LEFT',
-        payload: { senderId: myUserId },
+        payload: { sessionId: mySessionId },
       });
       supabase.removeChannel(roomChannelRef.current);
       roomChannelRef.current = null;
@@ -437,7 +441,7 @@ export default function RandomChat() {
           {/* Status Header Badge */}
           <div className="match-badge-pill">
             <span className="dot" />
-            <span>{isSearching ? 'Live Supabase WebSocket Lobby' : '100% Anonymous & Ephemeral'}</span>
+            <span>{isSearching ? 'Live WebSocket Matchmaking Active' : '100% Anonymous & Ephemeral'}</span>
           </div>
 
           {/* Radar Animation Area */}
@@ -464,7 +468,7 @@ export default function RandomChat() {
           </div>
 
           <h1 className="match-title">
-            {isSearching ? 'Searching for a classmate...' : 'Random Student Chat'}
+            {isSearching ? 'Matching with a classmate...' : 'Random Student Chat'}
           </h1>
           <p className="match-subtitle">
             {isSearching
@@ -472,26 +476,28 @@ export default function RandomChat() {
               : 'Chat 1-on-1 anonymously in real-time with fellow students across campus. Zero personal data shared unless you both agree to reveal.'}
           </p>
 
-          {/* Live Activity Row */}
-          <div className="match-stats-row">
-            <div className="match-stat-item">
-              <span className="match-stat-num">Realtime</span>
-              <span className="match-stat-lbl">WebSocket Sync</span>
+          {/* Live Mode Toggle (Auto Match vs Friend Code) */}
+          {!isSearching && (
+            <div style={{ display: 'flex', gap: 8, marginBottom: 18, background: 'var(--bg-tertiary)', padding: 4, borderRadius: 'var(--radius-pill)', border: '1px solid var(--border-light)' }}>
+              <button
+                className={`btn btn-sm btn-pill ${activeTabMode === 'auto' ? 'btn-primary' : 'btn-ghost'}`}
+                onClick={() => setActiveTabMode('auto')}
+                style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}
+              >
+                <Radio size={14} /> Auto Match
+              </button>
+              <button
+                className={`btn btn-sm btn-pill ${activeTabMode === 'code' ? 'btn-primary' : 'btn-ghost'}`}
+                onClick={() => setActiveTabMode('code')}
+                style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}
+              >
+                <KeyRound size={14} /> Friend Code
+              </button>
             </div>
-            <div className="match-stat-divider" />
-            <div className="match-stat-item">
-              <span className="match-stat-num">1-to-1</span>
-              <span className="match-stat-lbl">Private Pairing</span>
-            </div>
-            <div className="match-stat-divider" />
-            <div className="match-stat-item">
-              <span className="match-stat-num">Zero Log</span>
-              <span className="match-stat-lbl">Auto-Deletes</span>
-            </div>
-          </div>
+          )}
 
-          {/* Interest Tags */}
-          {!isSearching ? (
+          {/* Auto Match Mode */}
+          {!isSearching && activeTabMode === 'auto' && (
             <div className="match-filter-box">
               <div className="match-filter-header">
                 <span>Choose topic or vibe (optional):</span>
@@ -517,46 +523,67 @@ export default function RandomChat() {
                 ))}
               </div>
 
-              <div className="match-actions-row" style={{ display: 'flex', gap: 10, flexWrap: 'wrap', justifyContent: 'center' }}>
+              <div className="match-actions-row">
                 <button className="btn btn-primary btn-lg btn-pill" onClick={() => handleStartMatch()}>
                   <Sparkles size={18} />
                   Start Random Chat
                 </button>
-                <button
-                  className="btn btn-secondary btn-lg btn-pill"
-                  onClick={() => setShowRoomCodeInput(!showRoomCodeInput)}
-                >
-                  <KeyRound size={18} />
-                  Match with Friend Code
-                </button>
               </div>
-
-              {/* Room Code Direct Connect */}
-              {showRoomCodeInput && (
-                <div style={{ marginTop: 14, padding: 14, borderRadius: 'var(--radius-md)', background: 'var(--bg-tertiary)', display: 'flex', gap: 8, alignItems: 'center' }}>
-                  <input
-                    type="text"
-                    placeholder="Enter any room code (e.g. 7777 or LOBBY)"
-                    value={customRoomCode}
-                    onChange={e => setCustomRoomCode(e.target.value.toUpperCase())}
-                    style={{ flex: 1, padding: '8px 12px', fontSize: '0.84rem' }}
-                    onKeyDown={e => e.key === 'Enter' && customRoomCode.trim() && handleStartMatch(customRoomCode)}
-                  />
-                  <button
-                    className="btn btn-primary btn-sm btn-pill"
-                    onClick={() => customRoomCode.trim() && handleStartMatch(customRoomCode)}
-                  >
-                    Join Room
-                  </button>
-                </div>
-              )}
 
               <div className="match-safety-note">
                 <Shield size={14} />
                 <span>Encrypted live session. Be respectful to fellow students.</span>
               </div>
             </div>
-          ) : (
+          )}
+
+          {/* Friend Code Mode */}
+          {!isSearching && activeTabMode === 'code' && (
+            <div className="match-filter-box" style={{ textAlign: 'center' }}>
+              <div style={{ fontSize: '0.9rem', fontWeight: 600, color: 'var(--text-primary)', marginBottom: 6 }}>
+                Connect Instantly with a Friend
+              </div>
+              <p style={{ fontSize: '0.8rem', color: 'var(--text-tertiary)', marginBottom: 14 }}>
+                Enter the exact same 4-digit code on both devices (e.g. <strong>7777</strong> or <strong>CAMPUS</strong>) to connect directly in 0.1s!
+              </p>
+
+              <div style={{ display: 'flex', gap: 8, maxWidth: 360, margin: '0 auto 16px' }}>
+                <input
+                  type="text"
+                  placeholder="Enter code (e.g. 7777)"
+                  value={customRoomCode}
+                  onChange={e => setCustomRoomCode(e.target.value.toUpperCase())}
+                  style={{ flex: 1, padding: '10px 14px', textAlign: 'center', fontSize: '1rem', fontWeight: 700, letterSpacing: 2, textTransform: 'uppercase' }}
+                  onKeyDown={e => e.key === 'Enter' && customRoomCode.trim() && handleStartMatch(customRoomCode)}
+                />
+                <button
+                  className="btn btn-primary btn-pill"
+                  onClick={() => customRoomCode.trim() && handleStartMatch(customRoomCode)}
+                  disabled={!customRoomCode.trim()}
+                >
+                  Connect 🚀
+                </button>
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'center', gap: 8 }}>
+                {['7777', '9999', 'ROOM1', 'HOSTEL'].map(preset => (
+                  <button
+                    key={preset}
+                    className="chip"
+                    onClick={() => {
+                      setCustomRoomCode(preset);
+                      handleStartMatch(preset);
+                    }}
+                  >
+                    Quick: {preset}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Searching State */}
+          {isSearching && (
             <div className="match-searching-controls" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14 }}>
               <div style={{ display: 'flex', gap: 10 }}>
                 <button className="btn btn-secondary btn-pill" onClick={handleCancelSearch}>
@@ -662,7 +689,7 @@ export default function RandomChat() {
                   roomChannelRef.current.send({
                     type: 'broadcast',
                     event: 'PEER_LEFT',
-                    payload: { senderId: myUserId },
+                    payload: { sessionId: mySessionId },
                   });
                   supabase.removeChannel(roomChannelRef.current);
                   roomChannelRef.current = null;
@@ -699,7 +726,7 @@ export default function RandomChat() {
         {/* Messages Feed */}
         <div className="chat-messages">
           {activeMatch.messages.map(msg => {
-            const isSentByMe = msg.senderId === myUserId || msg.senderId === me.id;
+            const isSentByMe = msg.senderId === mySessionId || msg.senderId === me.id;
             return (
               <div
                 key={msg.id}
