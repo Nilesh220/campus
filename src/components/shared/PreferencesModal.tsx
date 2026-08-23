@@ -153,6 +153,19 @@ export default function PreferencesModal() {
                 </span>
               </div>
             </div>
+
+            <div style={{ marginTop: 'var(--space-2xl)', paddingTop: 'var(--space-lg)', borderTop: '1px solid var(--border-light)' }}>
+              <button
+                className="btn btn-secondary btn-pill"
+                style={{ width: '100%', color: 'var(--color-error)', borderColor: 'rgba(199, 92, 92, 0.3)' }}
+                onClick={() => {
+                  dispatch({ type: 'TOGGLE_PREFERENCES' });
+                  dispatch({ type: 'LOGOUT_USER' });
+                }}
+              >
+                Log Out of Account
+              </button>
+            </div>
           </div>
         </div>
       </div>
