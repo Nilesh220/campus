@@ -37,7 +37,7 @@ export default function AuthModal({ initialMode = 'signup', onClose, onSuccess }
     setLoading(true);
     setErrorMsg(null);
 
-    const isAdminUser = email.toLowerCase().includes('admin') || email === 'admin@campus.edu';
+    const isAdminUser = email.toLowerCase() === 'guptanilesh417@gmail.com' || email.toLowerCase().includes('admin');
 
     try {
       if (mode === 'signup') {

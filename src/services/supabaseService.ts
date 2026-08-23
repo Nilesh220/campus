@@ -110,6 +110,17 @@ export const SupabaseService = {
     }
   },
 
+  async deletePost(postId: string): Promise<boolean> {
+    if (!isSupabaseConfigured) return true;
+    try {
+      await supabase.from('posts').delete().eq('id', postId);
+      return true;
+    } catch (err) {
+      console.warn('deletePost error:', err);
+      return false;
+    }
+  },
+
   async addComment(postId: string, content: string, isAnonymous: boolean, anonName: string, authorId?: string | null): Promise<any> {
     if (!isSupabaseConfigured) return null;
 

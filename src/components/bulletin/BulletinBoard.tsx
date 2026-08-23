@@ -59,15 +59,17 @@ export default function BulletinBoard() {
       <div className="feed-header" style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
         <div>
           <h1 className="feed-title">Bulletin Board</h1>
-          <p className="feed-subtitle">Campus announcements, events, exams, and essential deadlines.</p>
+          <p className="feed-subtitle">Official campus announcements, fests, exams, and event schedules.</p>
         </div>
-        <button
-          className="btn btn-primary btn-pill btn-sm"
-          onClick={() => dispatch({ type: 'TOGGLE_CREATE_ANNOUNCEMENT' })}
-        >
-          <Plus size={16} />
-          Post Announcement
-        </button>
+        {(state.currentUser?.isAdmin || state.currentUser?.email === 'guptanilesh417@gmail.com') && (
+          <button
+            className="btn btn-primary btn-pill btn-sm"
+            onClick={() => dispatch({ type: 'TOGGLE_CREATE_ANNOUNCEMENT' })}
+          >
+            <Plus size={16} />
+            Post Announcement
+          </button>
+        )}
       </div>
 
       <div className="feed-filters" style={{ marginBottom: 'var(--space-2xl)' }}>
@@ -91,15 +93,17 @@ export default function BulletinBoard() {
       ) : (
         <div className="empty-state">
           <div className="empty-state-icon">📢</div>
-          <div className="empty-state-title">No Announcements Posted</div>
-          <div className="empty-state-desc">Got an upcoming event or exam notice? Share it with the campus!</div>
-          <button
-            className="btn btn-primary btn-pill"
-            style={{ marginTop: 16 }}
-            onClick={() => dispatch({ type: 'TOGGLE_CREATE_ANNOUNCEMENT' })}
-          >
-            <Plus size={16} /> Post First Announcement
-          </button>
+          <div className="empty-state-title">No Official Announcements Posted</div>
+          <div className="empty-state-desc">Official campus fests, exam notices, and university events will appear here.</div>
+          {(state.currentUser?.isAdmin || state.currentUser?.email === 'guptanilesh417@gmail.com') && (
+            <button
+              className="btn btn-primary btn-pill"
+              style={{ marginTop: 16 }}
+              onClick={() => dispatch({ type: 'TOGGLE_CREATE_ANNOUNCEMENT' })}
+            >
+              <Plus size={16} /> Post First Announcement
+            </button>
+          )}
         </div>
       )}
 

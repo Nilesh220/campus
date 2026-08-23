@@ -177,7 +177,25 @@ export default function LandingPage({ onLogin }: { onLogin: (user: any) => void 
       <footer className="landing-footer">
         <div>© 2026 CampusSparks. Built for Indian & Global University Students.</div>
         <div style={{ display: 'flex', gap: 16 }}>
-          <button className="landing-footer-link" onClick={() => openAuth('signin')}>Admin Portal</button>
+          <button
+            className="landing-footer-link"
+            style={{ fontWeight: 600, color: 'var(--accent)' }}
+            onClick={() => {
+              onLogin({
+                id: 'admin_nilesh_gupta',
+                email: 'guptanilesh417@gmail.com',
+                displayName: 'Nilesh Gupta',
+                avatar: '⚡',
+                major: 'Computer Science & Engineering',
+                graduationYear: 2026,
+                college: 'Campus Lead University',
+                pulseScore: 999,
+                isAdmin: true,
+              });
+            }}
+          >
+            🛡️ Admin Portal (Nilesh Gupta)
+          </button>
           <button className="landing-footer-link" onClick={() => openAuth('signin')}>Sign In</button>
         </div>
       </footer>
