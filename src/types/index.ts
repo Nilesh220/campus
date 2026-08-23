@@ -30,6 +30,8 @@ export interface User {
   badges: Badge[];
   isOnline: boolean;
   joinedAt: string;
+  email?: string;
+  isAdmin?: boolean;
 }
 
 export interface Badge {

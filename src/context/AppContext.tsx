@@ -43,7 +43,7 @@ interface AppState {
 const savedUser = typeof window !== 'undefined' ? localStorage.getItem('unipulse_user') : null;
 
 const initialState: AppState = {
-  currentUser: savedUser ? JSON.parse(savedUser) : CURRENT_USER,
+  currentUser: savedUser ? JSON.parse(savedUser) : null,
   theme: (typeof window !== 'undefined' && window.matchMedia?.('(prefers-color-scheme: dark)').matches) ? 'dark' : 'light',
   activeTab: 'feed',
   posts: [],

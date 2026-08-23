@@ -14,13 +14,13 @@ import DirectMessages from './components/network/DirectMessages';
 import UserProfileModal from './components/shared/UserProfileModal';
 import PreferencesModal from './components/shared/PreferencesModal';
 import AdminDashboard from './components/admin/AdminDashboard';
-import AuthScreen from './components/auth/AuthScreen';
+import LandingPage from './components/landing/LandingPage';
 
 function AppContent() {
   const { state, dispatch } = useApp();
 
   if (!state.currentUser) {
-    return <AuthScreen onAuthenticated={(user) => dispatch({ type: 'LOGIN_USER', payload: user })} />;
+    return <LandingPage onLogin={(user) => dispatch({ type: 'LOGIN_USER', payload: user })} />;
   }
 
   const renderPage = () => {

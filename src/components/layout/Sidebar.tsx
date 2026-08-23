@@ -57,11 +57,15 @@ export default function Sidebar() {
             </button>
           ))}
 
-          <span className="sidebar-label" style={{ marginTop: 'auto' }}>Settings & Admin</span>
-          <button className="sidebar-item" onClick={() => dispatch({ type: 'TOGGLE_ADMIN' })}>
-            <Settings size={20} />
-            Admin Dashboard
-          </button>
+          <span className="sidebar-label" style={{ marginTop: 'auto' }}>
+            {state.currentUser?.isAdmin ? 'Settings & Admin' : 'Settings'}
+          </span>
+          {state.currentUser?.isAdmin && (
+            <button className="sidebar-item" onClick={() => dispatch({ type: 'TOGGLE_ADMIN' })}>
+              <Settings size={20} />
+              Admin Dashboard
+            </button>
+          )}
           <button className="sidebar-item" onClick={() => dispatch({ type: 'TOGGLE_PREFERENCES' })}>
             <Settings size={20} />
             Preferences
