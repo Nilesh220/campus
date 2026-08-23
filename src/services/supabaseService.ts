@@ -64,23 +64,29 @@ export const SupabaseService = {
     if (!isSupabaseConfigured) return null;
 
     try {
+      const validCategories: PostCategory[] = ['confession', 'study', 'lost-found', 'campus-vibe', 'event', 'meme'];
+      const cat = validCategories.includes(post.category) ? post.category : 'confession';
+
       const { data, error } = await supabase
         .from('posts')
         .insert({
           content: post.content,
-          category: post.category,
-          tags: post.tags,
+          category: cat,
+          tags: post.tags || [],
           is_anonymous: post.isAnonymous,
           anonymous_name: post.anonymousName,
           anonymous_emoji: post.anonymousEmoji,
           upvotes: 0,
           downvotes: 0,
-          reactions: post.reactions,
+          reactions: post.reactions || { '🔥': 0, '💀': 0, '❤️': 0, '💡': 0, '😭': 0, '😂': 0 },
         })
         .select()
         .single();
 
-      if (error || !data) return null;
+      if (error || !data) {
+        console.error('Supabase createPost error:', error);
+        return null;
+      }
       return {
         ...post,
         id: data.id,

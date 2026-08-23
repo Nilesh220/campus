@@ -1,10 +1,7 @@
-// ============================================================
-// Pulse Feed Page
-// ============================================================
-
 import { useState } from 'react';
-import { Plus } from 'lucide-react';
+import { Plus, RefreshCw } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
+import { SupabaseService } from '../../services/supabaseService';
 import PostCard from './PostCard';
 import CreatePostModal from './CreatePostModal';
 
@@ -22,6 +19,16 @@ const FILTER_CHIPS: { id: string; label: string }[] = [
 export default function PulseFeed() {
   const { state, dispatch } = useApp();
   const [activeFilter, setActiveFilter] = useState('all');
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  const handleRefreshFeed = async () => {
+    setIsRefreshing(true);
+    const livePosts = await SupabaseService.fetchPosts();
+    if (livePosts.length > 0) {
+      dispatch({ type: 'SET_POSTS', payload: livePosts });
+    }
+    setTimeout(() => setIsRefreshing(false), 600);
+  };
 
   const filteredPosts = state.posts.filter(p => {
     if (activeFilter === 'all') return true;
@@ -33,8 +40,21 @@ export default function PulseFeed() {
     <div className="app-content">
       {/* Header */}
       <div className="feed-header">
-        <h1 className="feed-title">Pulse Feed 🔥</h1>
-        <p className="feed-subtitle">Real-time campus chatter. Spill the tea anonymously or rep your profile! ✨</p>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 12 }}>
+          <div>
+            <h1 className="feed-title">Pulse Feed 🔥</h1>
+            <p className="feed-subtitle">Real-time campus chatter. Spill the tea anonymously or rep your profile! ✨</p>
+          </div>
+          <button
+            className="btn btn-secondary btn-sm btn-pill"
+            onClick={handleRefreshFeed}
+            disabled={isRefreshing}
+            style={{ display: 'flex', alignItems: 'center', gap: 6 }}
+          >
+            <RefreshCw size={14} className={isRefreshing ? 'spin' : ''} />
+            {isRefreshing ? 'Syncing...' : 'Live Sync'}
+          </button>
+        </div>
 
         <div className="feed-filters">
           {FILTER_CHIPS.map(chip => (
