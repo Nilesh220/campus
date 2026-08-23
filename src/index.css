@@ -4759,5 +4759,233 @@ input, textarea, select { font-family: var(--font-primary); color: var(--text-pr
   }
 }
 
+/* ============================================================
+   PROJECT MEMBERS & PARTICIPANTS ROSTER MODAL
+   ============================================================ */
+
+.group-nav-members-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-light);
+  color: var(--accent);
+  padding: 4px 10px;
+  border-radius: var(--radius-pill);
+  font-size: 0.76rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.group-nav-members-btn:hover {
+  background: var(--accent-bg-strong);
+  border-color: var(--accent);
+  transform: translateY(-1px);
+}
+
+.group-members-pill-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-light);
+  color: var(--text-primary);
+  padding: 5px 12px;
+  border-radius: var(--radius-pill);
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.group-members-pill-btn:hover {
+  background: var(--accent-bg-strong);
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+.members-modal-subtitle {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  display: block;
+  margin-top: 2px;
+}
+
+.members-search-box {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-pill);
+  margin-bottom: 14px;
+}
+
+.members-search-icon {
+  color: var(--text-tertiary);
+  flex-shrink: 0;
+}
+
+.members-search-input {
+  flex: 1;
+  background: none;
+  border: none;
+  font-size: 0.86rem;
+  color: var(--text-primary);
+  outline: none;
+}
+
+.members-roster-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 380px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.member-roster-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-light);
+  border-radius: 16px;
+  transition: all var(--transition-fast);
+}
+
+.member-roster-item:hover {
+  border-color: var(--accent);
+  background: var(--bg-hover);
+}
+
+.member-roster-avatar {
+  position: relative;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--bg-secondary);
+  border: 1.5px solid var(--border-light);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.3rem;
+  flex-shrink: 0;
+}
+
+.member-online-dot {
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--color-success);
+  border: 2px solid var(--bg-secondary);
+}
+
+.member-roster-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.member-roster-name-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.member-roster-name {
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.member-role-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 0.68rem;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: var(--radius-pill);
+  background: var(--bg-secondary);
+  color: var(--text-tertiary);
+}
+
+.member-role-badge.lead {
+  background: var(--accent-bg-strong);
+  color: var(--accent);
+  border: 1px solid var(--accent);
+}
+
+.member-roster-sub {
+  font-size: 0.76rem;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-top: 1px;
+}
+
+.members-modal-footer {
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border-light);
+}
+
+/* ============================================================
+   ROULETTE MINI-GAMES BAR
+   ============================================================ */
+
+.chat-minigames-bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  background: var(--bg-secondary);
+  border-top: 1px solid var(--border-light);
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.chat-minigames-bar::-webkit-scrollbar {
+  display: none;
+}
+
+.minigames-label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  white-space: nowrap;
+}
+
+.minigame-chip-btn {
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-light);
+  color: var(--text-primary);
+  border-radius: var(--radius-pill);
+  padding: 3px 10px;
+  font-size: 0.76rem;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.minigame-chip-btn:hover {
+  background: var(--accent-bg-strong);
+  color: var(--accent);
+  border-color: var(--accent);
+  transform: translateY(-1px);
+}
+
+
 
 

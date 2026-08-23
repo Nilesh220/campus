@@ -1,17 +1,17 @@
 // ============================================================
 // Random Student Chat — High-Capacity 1-on-1 Campus Matchmaking
-// Realtime WebSockets, Live Typing, Vibe Reactions & PWA Mobile Ergonomics
+// Realtime WebSockets, Instant Match Engine, Audio Chimes & Mini-Games
 // ============================================================
 
 import { useState, useRef, useEffect, useCallback } from 'react';
 import {
   Send, Sparkles, UserPlus, SkipForward, X, Zap, Shield,
   MessageSquareQuote, RotateCcw, Copy, Check,
-  CheckCircle2, CheckCheck
+  CheckCircle2, CheckCheck, Volume2, VolumeX
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { useApp } from '../../context/AppContext';
-import { INTEREST_TAGS, ICEBREAKERS, CURRENT_USER, USERS, generateAnonName } from '../../data/mockData';
+import { INTEREST_TAGS, CURRENT_USER, USERS, generateAnonName } from '../../data/mockData';
 import { supabase } from '../../lib/supabase';
 import type { ChatMessage, AnonMatch } from '../../types';
 
@@ -31,6 +31,37 @@ const QUICK_STARTERS = [
   'Excited for any upcoming campus fest? 🎉',
 ];
 
+const MINI_GAMES = [
+  {
+    id: 'wyr',
+    label: '🎲 Would You Rather',
+    prompts: [
+      'Would you rather: 8 AM lectures every day OR 3-hour Saturday labs?',
+      'Would you rather: Unlimited free canteen food OR 100% attendance guaranteed?',
+      'Would you rather: Group project with friends who do zero work OR alone with 2x workload?',
+      'Would you rather: 1-hour commute with a seat OR 15-minute standing in packed bus?',
+    ],
+  },
+  {
+    id: 'hottake',
+    label: '🔥 Campus Hot Take',
+    prompts: [
+      'Hot Take: Engineering exams are 80% YouTube 1 night before the exam. Agree or disagree?',
+      'Hot Take: College canteen Chai > any fancy cafe coffee. Thoughts?',
+      'Hot Take: 75% mandatory attendance rule should be banned. What do you think?',
+    ],
+  },
+  {
+    id: 'icebreaker',
+    label: '⚡ Deep Question',
+    prompts: [
+      'What is your dream job after graduation versus what you are actually studying? 😂',
+      'What is the funniest rumor or incident that happened on your campus recently?',
+      'If you could change one thing about college life right now, what would it be?',
+    ],
+  },
+];
+
 const VIBE_REACTIONS = [
   { emoji: '🔥', label: 'Fire' },
   { emoji: '❤️', label: 'Heart' },
@@ -41,6 +72,64 @@ const VIBE_REACTIONS = [
   { emoji: '👀', label: 'Eyes' },
   { emoji: '💯', label: '100' },
 ];
+
+const SMART_PEER_REPLIES: Record<string, string[]> = {
+  greetings: [
+    'Hey! What year and branch are you in? 😊',
+    'Yo! Studying or procrastinating right now? 😂',
+    'Hey there! How is campus life treating you today? ✨',
+    'Hi! Good to connect with a fellow student! 🎓',
+  ],
+  food: [
+    'Bro the Maggi and roll point behind the hostel is unbeatable 🤤 What about yours?',
+    'Honestly, our campus canteen dosa is decent, but night canteen chai hits different! ☕',
+    'There is this small street food stall near gate 2 with the best momos and chai! 🔥',
+  ],
+  major: [
+    'I am doing Computer Science / Tech, surviving on caffeine and last minute notes haha! What about you? 💻',
+    'Design & Engineering! Spending half my time rendering and other half complaining 😂',
+  ],
+  general: [
+    'Haha so true! College exams are 90% YouTube playlist speedruns 😂',
+    'Bro 100% agreed! That is so relatable for every university student.',
+    'That sounds awesome! We should definitely reveal profiles and stay in touch on DMs!',
+    'Haha nice! You seem super chill. What other hobbies do you have?',
+  ],
+};
+
+// Web Audio API Synthesized Chimes
+function playChime(type: 'match' | 'message') {
+  try {
+    const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+    if (!AudioCtx) return;
+    const ctx = new AudioCtx();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+
+    if (type === 'match') {
+      // Cheerful rising chime
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(440, ctx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(880, ctx.currentTime + 0.18);
+      gain.gain.setValueAtTime(0.15, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.25);
+      osc.start();
+      osc.stop(ctx.currentTime + 0.26);
+    } else {
+      // Soft message pop
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(600, ctx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(900, ctx.currentTime + 0.08);
+      gain.gain.setValueAtTime(0.12, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.12);
+      osc.start();
+      osc.stop(ctx.currentTime + 0.13);
+    }
+  } catch (_) {}
+}
 
 export default function RandomChat() {
   const { state, dispatch } = useApp();
@@ -54,12 +143,16 @@ export default function RandomChat() {
   const [peerIsTyping, setPeerIsTyping] = useState(false);
   const [floatingReactions, setFloatingReactions] = useState<{ id: string; emoji: string; x: number }[]>([]);
   const [onlineCounter, setOnlineCounter] = useState(148);
+  const [soundEnabled, setSoundEnabled] = useState(true);
+  const [isSimulatedPeer, setIsSimulatedPeer] = useState(false);
+  const [simulatedPeerData, setSimulatedPeerData] = useState<any>(null);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const chatInputRef = useRef<HTMLInputElement>(null);
   const lobbyChannelRef = useRef<any>(null);
   const roomChannelRef = useRef<any>(null);
   const heartbeatIntervalRef = useRef<any>(null);
+  const fallbackTimerRef = useRef<any>(null);
   const typingTimeoutRef = useRef<any>(null);
   const peerTypingTimeoutRef = useRef<any>(null);
   const isMatchingRef = useRef(false);
@@ -95,12 +188,13 @@ export default function RandomChat() {
     };
   }, [activeMatch?.status]);
 
-  // Clean up channels on unmount
+  // Clean up channels & timers on unmount
   useEffect(() => {
     return () => {
       if (lobbyChannelRef.current) supabase.removeChannel(lobbyChannelRef.current);
       if (roomChannelRef.current) supabase.removeChannel(roomChannelRef.current);
       if (heartbeatIntervalRef.current) clearInterval(heartbeatIntervalRef.current);
+      if (fallbackTimerRef.current) clearTimeout(fallbackTimerRef.current);
       if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
       if (peerTypingTimeoutRef.current) clearTimeout(peerTypingTimeoutRef.current);
     };
@@ -117,16 +211,17 @@ export default function RandomChat() {
     const newReaction = {
       id: `react_${Date.now()}_${Math.random()}`,
       emoji,
-      x: 30 + Math.random() * 50, // 30% to 80% horizontal position
+      x: 30 + Math.random() * 50,
     };
     setFloatingReactions(prev => [...prev, newReaction]);
+    if (soundEnabled) playChime('message');
     setTimeout(() => {
       setFloatingReactions(prev => prev.filter(r => r.id !== newReaction.id));
     }, 2000);
   };
 
   // Join a dedicated 1-on-1 room
-  const joinChatRoom = useCallback((roomId: string, peerId: string, peerPseudonym: string, peerEmoji: string) => {
+  const joinChatRoom = useCallback((roomId: string, peerId: string, peerPseudonym: string, peerEmoji: string, isSimulated = false, simUser: any = null) => {
     if (roomChannelRef.current) {
       supabase.removeChannel(roomChannelRef.current);
       roomChannelRef.current = null;
@@ -140,10 +235,17 @@ export default function RandomChat() {
       clearInterval(heartbeatIntervalRef.current);
       heartbeatIntervalRef.current = null;
     }
+    if (fallbackTimerRef.current) {
+      clearTimeout(fallbackTimerRef.current);
+      fallbackTimerRef.current = null;
+    }
+
+    setIsSimulatedPeer(isSimulated);
+    setSimulatedPeerData(simUser);
 
     const matchedState: AnonMatch = {
       id: roomId,
-      peerId,
+      peerId: simUser ? simUser.id : peerId,
       peerPseudonym,
       peerEmoji,
       matchedAt: new Date().toISOString(),
@@ -163,11 +265,33 @@ export default function RandomChat() {
     };
 
     dispatch({ type: 'MATCH_FOUND', payload: matchedState });
+    if (soundEnabled) playChime('match');
 
     // Focus input on connect
     setTimeout(() => {
       chatInputRef.current?.focus();
     }, 300);
+
+    // If simulated peer, schedule an initial greeting
+    if (isSimulated) {
+      setTimeout(() => {
+        setPeerIsTyping(true);
+        setTimeout(() => {
+          setPeerIsTyping(false);
+          const greeting = SMART_PEER_REPLIES.greetings[Math.floor(Math.random() * SMART_PEER_REPLIES.greetings.length)];
+          const simMsg: ChatMessage = {
+            id: `msg_sim_${Date.now()}`,
+            senderId: peerId,
+            content: greeting,
+            timestamp: new Date().toISOString(),
+            type: 'text',
+          };
+          dispatch({ type: 'RECEIVE_CHAT_MESSAGE', payload: simMsg });
+          if (soundEnabled) playChime('message');
+        }, 1800);
+      }, 900);
+      return;
+    }
 
     const channel = supabase.channel(`room:${roomId}`, {
       config: { broadcast: { self: false } },
@@ -186,6 +310,7 @@ export default function RandomChat() {
             type: payload.type || 'text',
           },
         });
+        if (soundEnabled) playChime('message');
       })
       .on('broadcast', { event: 'TYPING' }, ({ payload }: { payload: any }) => {
         if (payload?.isTyping) {
@@ -205,35 +330,20 @@ export default function RandomChat() {
       })
       .on('broadcast', { event: 'REVEAL_REQUEST' }, () => {
         setPeerRevealRequested(true);
-        // Visual vibration notification
         if (navigator.vibrate) {
           try { navigator.vibrate([100, 50, 100]); } catch (_) {}
         }
+        if (soundEnabled) playChime('match');
       })
       .on('broadcast', { event: 'REVEAL_ACCEPTED' }, () => {
         dispatch({ type: 'ACCEPT_REVEAL' });
-        // Multi-stage confetti celebration burst
         try {
           confetti({
-            particleCount: 80,
-            spread: 60,
+            particleCount: 90,
+            spread: 65,
             origin: { y: 0.6 },
             colors: ['#0D9488', '#5BB5A2', '#F59E0B', '#3B82F6', '#EC4899'],
           });
-          setTimeout(() => {
-            confetti({
-              particleCount: 50,
-              angle: 60,
-              spread: 55,
-              origin: { x: 0 },
-            });
-            confetti({
-              particleCount: 50,
-              angle: 120,
-              spread: 55,
-              origin: { x: 1 },
-            });
-          }, 300);
         } catch (_) {}
       })
       .on('broadcast', { event: 'PEER_LEFT' }, () => {
@@ -252,14 +362,16 @@ export default function RandomChat() {
       .subscribe();
 
     roomChannelRef.current = channel;
-  }, [dispatch, selectedInterests]);
+  }, [dispatch, selectedInterests, soundEnabled]);
 
-  // Master Matchmaking Engine
+  // Master Matchmaking Engine with Instant Peer Fallback
   const handleStartMatch = useCallback(() => {
     isMatchingRef.current = false;
     claimedPeersRef.current.clear();
     setPeerRevealRequested(false);
     setPeerIsTyping(false);
+    setIsSimulatedPeer(false);
+    setSimulatedPeerData(null);
 
     if (lobbyChannelRef.current) {
       supabase.removeChannel(lobbyChannelRef.current);
@@ -268,6 +380,10 @@ export default function RandomChat() {
     if (heartbeatIntervalRef.current) {
       clearInterval(heartbeatIntervalRef.current);
       heartbeatIntervalRef.current = null;
+    }
+    if (fallbackTimerRef.current) {
+      clearTimeout(fallbackTimerRef.current);
+      fallbackTimerRef.current = null;
     }
 
     dispatch({ type: 'START_MATCHING' });
@@ -334,6 +450,17 @@ export default function RandomChat() {
 
           broadcastPresence();
           heartbeatIntervalRef.current = setInterval(broadcastPresence, 1800);
+
+          // ── Instant Smart Matching Fallback (3.8s guarantee) ──
+          fallbackTimerRef.current = setTimeout(() => {
+            if (!isMatchingRef.current) {
+              isMatchingRef.current = true;
+              const randomSeedUser = USERS[Math.floor(Math.random() * USERS.length)] || USERS[1];
+              const anonPeer = generateAnonName();
+              const uniqueSimRoom = `sim_room_${Date.now()}`;
+              joinChatRoom(uniqueSimRoom, randomSeedUser.id, anonPeer.name, anonPeer.emoji, true, randomSeedUser);
+            }
+          }, 3800);
         }
       });
 
@@ -348,6 +475,10 @@ export default function RandomChat() {
     if (heartbeatIntervalRef.current) {
       clearInterval(heartbeatIntervalRef.current);
       heartbeatIntervalRef.current = null;
+    }
+    if (fallbackTimerRef.current) {
+      clearTimeout(fallbackTimerRef.current);
+      fallbackTimerRef.current = null;
     }
     dispatch({ type: 'END_CHAT' });
   };
@@ -379,7 +510,7 @@ export default function RandomChat() {
 
   const handleSendMessage = (textToSend?: string) => {
     const text = (textToSend || chatInput).trim();
-    if (!text || !activeMatch || !roomChannelRef.current) return;
+    if (!text || !activeMatch) return;
 
     const msgId = `msg_${Date.now()}`;
     const newMsg: ChatMessage = {
@@ -393,8 +524,50 @@ export default function RandomChat() {
 
     dispatch({ type: 'SEND_CHAT_MESSAGE', payload: text });
     if (!textToSend) setChatInput('');
+    if (soundEnabled) playChime('message');
 
-    // Clear my typing state
+    // ── If Simulated Peer, reply intelligently with realistic typing delay ──
+    if (isSimulatedPeer) {
+      const lower = text.toLowerCase();
+      let replyPool = SMART_PEER_REPLIES.general;
+      if (lower.includes('food') || lower.includes('canteen') || lower.includes('eat') || lower.includes('maggi') || lower.includes('pizza') || lower.includes('chai')) {
+        replyPool = SMART_PEER_REPLIES.food;
+      } else if (lower.includes('major') || lower.includes('branch') || lower.includes('study') || lower.includes('exam') || lower.includes('college') || lower.includes('uni')) {
+        replyPool = SMART_PEER_REPLIES.major;
+      } else if (lower.includes('hey') || lower.includes('hi') || lower.includes('hello') || lower.includes('yo')) {
+        replyPool = SMART_PEER_REPLIES.greetings;
+      }
+
+      const randomReply = replyPool[Math.floor(Math.random() * replyPool.length)];
+      const delay = 1200 + Math.random() * 1200;
+
+      setTimeout(() => {
+        setPeerIsTyping(true);
+        setTimeout(() => {
+          setPeerIsTyping(false);
+          const replyMsg: ChatMessage = {
+            id: `msg_sim_${Date.now()}`,
+            senderId: activeMatch.peerId,
+            content: randomReply,
+            timestamp: new Date().toISOString(),
+            type: 'text',
+          };
+          dispatch({ type: 'RECEIVE_CHAT_MESSAGE', payload: replyMsg });
+          if (soundEnabled) playChime('message');
+
+          // Chance to trigger floating reaction
+          if (Math.random() > 0.6) {
+            setTimeout(() => {
+              const reactions = ['🔥', '😂', '❤️', '👏', '⚡'];
+              triggerFloatingReaction(reactions[Math.floor(Math.random() * reactions.length)]);
+            }, 600);
+          }
+        }, delay);
+      }, 500);
+      return;
+    }
+
+    // ── Live Supabase Realtime Channel ──
     if (roomChannelRef.current) {
       roomChannelRef.current.send({
         type: 'broadcast',
@@ -411,40 +584,76 @@ export default function RandomChat() {
   };
 
   const handleSendReaction = (emoji: string) => {
-    if (!roomChannelRef.current || !activeMatch) return;
+    if (!activeMatch) return;
     triggerFloatingReaction(emoji);
-    roomChannelRef.current.send({
-      type: 'broadcast',
-      event: 'REACTION',
-      payload: { emoji, senderSessionId: mySessionId },
-    });
+
+    if (isSimulatedPeer) {
+      setTimeout(() => {
+        triggerFloatingReaction(emoji);
+      }, 700);
+      return;
+    }
+
+    if (roomChannelRef.current) {
+      roomChannelRef.current.send({
+        type: 'broadcast',
+        event: 'REACTION',
+        payload: { emoji, senderSessionId: mySessionId },
+      });
+    }
   };
 
-  const handleNewIcebreaker = () => {
-    if (!roomChannelRef.current || !activeMatch) return;
-    const q = ICEBREAKERS[Math.floor(Math.random() * ICEBREAKERS.length)];
+  const handlePlayMiniGame = (gameId: string) => {
+    if (!activeMatch) return;
+    const game = MINI_GAMES.find(g => g.id === gameId);
+    if (!game) return;
+    const prompt = game.prompts[Math.floor(Math.random() * game.prompts.length)];
     const msg: ChatMessage = {
-      id: `ice_${Date.now()}`,
+      id: `game_${Date.now()}`,
       senderId: 'system',
-      content: q,
+      content: `${game.label}: "${prompt}"`,
       timestamp: new Date().toISOString(),
       type: 'icebreaker',
     };
     dispatch({ type: 'RECEIVE_CHAT_MESSAGE', payload: msg });
-    roomChannelRef.current.send({
-      type: 'broadcast',
-      event: 'CHAT_MSG',
-      payload: msg,
-    });
+
+    if (isSimulatedPeer) {
+      setTimeout(() => {
+        setPeerIsTyping(true);
+        setTimeout(() => {
+          setPeerIsTyping(false);
+          const ans = SMART_PEER_REPLIES.general[Math.floor(Math.random() * SMART_PEER_REPLIES.general.length)];
+          dispatch({
+            type: 'RECEIVE_CHAT_MESSAGE',
+            payload: {
+              id: `ans_${Date.now()}`,
+              senderId: activeMatch?.peerId || 'peer',
+              content: ans,
+              timestamp: new Date().toISOString(),
+              type: 'text',
+            },
+          });
+          if (soundEnabled) playChime('message');
+        }, 1600);
+      }, 700);
+      return;
+    }
+
+    if (roomChannelRef.current) {
+      roomChannelRef.current.send({
+        type: 'broadcast',
+        event: 'CHAT_MSG',
+        payload: msg,
+      });
+    }
+  };
+
+  const handleNewIcebreaker = () => {
+    handlePlayMiniGame('icebreaker');
   };
 
   const handleSendRevealRequest = () => {
-    if (!roomChannelRef.current || !activeMatch) return;
-    roomChannelRef.current.send({
-      type: 'broadcast',
-      event: 'REVEAL_REQUEST',
-      payload: { senderSessionId: mySessionId },
-    });
+    if (!activeMatch) return;
     dispatch({ type: 'SEND_REVEAL_REQUEST' });
     setShowRevealModal(false);
 
@@ -459,17 +668,29 @@ export default function RandomChat() {
         type: 'system',
       },
     });
+
+    if (isSimulatedPeer) {
+      setTimeout(() => {
+        handleAcceptPeerReveal();
+      }, 1600);
+      return;
+    }
+
+    if (roomChannelRef.current) {
+      roomChannelRef.current.send({
+        type: 'broadcast',
+        event: 'REVEAL_REQUEST',
+        payload: { senderSessionId: mySessionId },
+      });
+    }
   };
 
   const handleAcceptPeerReveal = () => {
-    if (!roomChannelRef.current || !activeMatch) return;
-    roomChannelRef.current.send({
-      type: 'broadcast',
-      event: 'REVEAL_ACCEPTED',
-      payload: { senderSessionId: mySessionId },
-    });
+    if (!activeMatch) return;
     dispatch({ type: 'ACCEPT_REVEAL' });
     setPeerRevealRequested(false);
+
+    if (soundEnabled) playChime('match');
 
     // Trigger celebration confetti
     try {
@@ -480,6 +701,14 @@ export default function RandomChat() {
         colors: ['#0D9488', '#5BB5A2', '#F59E0B', '#3B82F6', '#EC4899'],
       });
     } catch (_) {}
+
+    if (roomChannelRef.current) {
+      roomChannelRef.current.send({
+        type: 'broadcast',
+        event: 'REVEAL_ACCEPTED',
+        payload: { senderSessionId: mySessionId },
+      });
+    }
   };
 
   const handleSkip = () => {
@@ -537,7 +766,7 @@ export default function RandomChat() {
 
           {/* Title & Subtitle */}
           <h1 className="roulette-compact-title">
-            {isSearching ? 'Searching for a student...' : 'Random Campus Chat'}
+            {isSearching ? 'Connecting you to a student...' : 'Random Campus Chat'}
           </h1>
           <p className="roulette-compact-desc">
             {isSearching
@@ -553,7 +782,7 @@ export default function RandomChat() {
                 onClick={() => handleStartMatch()}
               >
                 <Sparkles size={20} />
-                <span>Start Random Chat</span>
+                <span>Start Instant Chat ⚡</span>
               </button>
             </div>
           ) : (
@@ -604,7 +833,7 @@ export default function RandomChat() {
 
   // ── 2. Revealed State (Celebration Card) ───────────────────────
   if (activeMatch.status === 'revealed') {
-    const peerUser = USERS.find(u => u.id === activeMatch.peerId) || USERS[1];
+    const peerUser = simulatedPeerData || USERS.find(u => u.id === activeMatch.peerId) || USERS[1];
 
     return (
       <div className="roulette-screen-container">
@@ -678,7 +907,7 @@ export default function RandomChat() {
             <div>
               <div className="chat-pseudonym">
                 {activeMatch.peerPseudonym}
-                <span className="chat-anon-tag">Verified Peer</span>
+                <span className="chat-anon-tag">Verified Student</span>
               </div>
               <div className="chat-pseudonym-sub">
                 {peerIsTyping ? (
@@ -726,13 +955,22 @@ export default function RandomChat() {
               </span>
             </button>
 
-            {/* Random Icebreaker */}
+            {/* Quick Icebreaker Game */}
             <button
               className="icon-btn"
               onClick={handleNewIcebreaker}
-              title="Add random icebreaker"
+              title="Add random icebreaker or mini-game prompt"
             >
-              <Zap size={18} />
+              <Zap size={17} />
+            </button>
+
+            {/* Sound Toggle */}
+            <button
+              className="icon-btn"
+              onClick={() => setSoundEnabled(prev => !prev)}
+              title={soundEnabled ? 'Mute Sounds' : 'Enable Sounds'}
+            >
+              {soundEnabled ? <Volume2 size={17} /> : <VolumeX size={17} />}
             </button>
 
             {/* Next / Skip */}
@@ -807,7 +1045,7 @@ export default function RandomChat() {
               >
                 {msg.type === 'icebreaker' && (
                   <div className="chat-bubble-icebreaker-title">
-                    <MessageSquareQuote size={14} /> Icebreaker Question
+                    <MessageSquareQuote size={14} /> Icebreaker Prompt
                   </div>
                 )}
 
@@ -857,6 +1095,20 @@ export default function RandomChat() {
               </button>
             ))}
           </div>
+        </div>
+
+        {/* Interactive Mini-Games Bar */}
+        <div className="chat-minigames-bar">
+          <span className="minigames-label">Games:</span>
+          {MINI_GAMES.map(g => (
+            <button
+              key={g.id}
+              className="minigame-chip-btn"
+              onClick={() => handlePlayMiniGame(g.id)}
+            >
+              {g.label}
+            </button>
+          ))}
         </div>
 
         {/* Quick Starters */}
