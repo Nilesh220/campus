@@ -66,6 +66,7 @@ export const SupabaseService = {
     try {
       const validCategories: PostCategory[] = ['confession', 'study', 'lost-found', 'campus-vibe', 'event', 'meme'];
       const cat = validCategories.includes(post.category) ? post.category : 'confession';
+      const isValidUUID = post.authorId && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(post.authorId);
 
       const { data, error } = await supabase
         .from('posts')
@@ -73,6 +74,7 @@ export const SupabaseService = {
           content: post.content,
           category: cat,
           tags: post.tags || [],
+          author_id: isValidUUID ? post.authorId : null,
           is_anonymous: post.isAnonymous,
           anonymous_name: post.anonymousName,
           anonymous_emoji: post.anonymousEmoji,
@@ -91,6 +93,7 @@ export const SupabaseService = {
         ...post,
         id: data.id,
         createdAt: data.created_at,
+        comments: [],
       };
     } catch (err) {
       console.warn('createPost error:', err);
@@ -130,6 +133,8 @@ export const SupabaseService = {
   async addComment(postId: string, content: string, isAnonymous: boolean, anonName: string, authorId?: string | null): Promise<any> {
     if (!isSupabaseConfigured) return null;
 
+    const isValidUUID = authorId && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(authorId);
+
     try {
       const { data, error } = await supabase
         .from('comments')
@@ -137,13 +142,16 @@ export const SupabaseService = {
           post_id: postId,
           content,
           is_anonymous: isAnonymous,
-          anonymous_name: anonName,
-          author_id: authorId || null,
+          anonymous_name: anonName || 'Campus Student',
+          author_id: isValidUUID ? authorId : null,
         })
         .select()
         .single();
 
-      if (error) return null;
+      if (error) {
+        console.error('Supabase addComment error:', error);
+        return null;
+      }
       return data;
     } catch (err) {
       console.warn('addComment error:', err);
