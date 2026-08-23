@@ -1,5 +1,6 @@
 // ============================================================
 // Mobile Bottom Navigation
+// Automatically hides inside active chat rooms for seamless keyboard typing
 // ============================================================
 
 import { Flame, Shuffle, Users, Megaphone, MessageCircle } from 'lucide-react';
@@ -16,6 +17,17 @@ const TABS: { id: NavTab; label: string; icon: React.ReactNode }[] = [
 
 export default function MobileNav() {
   const { state, dispatch } = useApp();
+
+  // Hide bottom tab bar during active chat sessions so keyboard attaches directly to the input box
+  const isInsideActiveChat = Boolean(
+    state.selectedGroupId ||
+    (state.activeTab === 'match' && state.activeMatch?.status === 'chatting') ||
+    (state.activeTab === 'messages' && state.activeConversationId)
+  );
+
+  if (isInsideActiveChat) {
+    return null;
+  }
 
   const unreadDMs = state.conversations.reduce((sum, c) => sum + c.unreadCount, 0);
 

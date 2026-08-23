@@ -1,12 +1,12 @@
 // ============================================================
 // CampusSparks — Premium Student Landing Page
-// Clean Professional Lucide Icons & Responsive Design
+// Clean Professional Lucide Icons & Responsive Mobile Design
 // ============================================================
 
 import { useState } from 'react';
 import {
   Sparkles, Flame, Shuffle, Users, Megaphone,
-  ArrowRight, LogIn, ShieldCheck, Lock
+  LogIn, ShieldCheck, Lock
 } from 'lucide-react';
 import AuthModal from '../auth/AuthModal';
 
@@ -24,7 +24,7 @@ export default function LandingPage({ onLogin }: { onLogin: (user: any) => void 
       {/* Top Landing Navbar */}
       <header className="landing-nav">
         <div className="landing-nav-content">
-          <div className="landing-brand" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <div className="landing-brand">
             <Sparkles size={20} style={{ color: 'var(--accent)' }} />
             <span>CampusSparks</span>
           </div>
@@ -40,7 +40,7 @@ export default function LandingPage({ onLogin }: { onLogin: (user: any) => void 
               className="btn btn-primary btn-sm btn-pill"
               onClick={() => openAuth('signup')}
             >
-              Get Started <ArrowRight size={15} />
+              Get Started
             </button>
           </div>
         </div>
@@ -55,7 +55,7 @@ export default function LandingPage({ onLogin }: { onLogin: (user: any) => void 
 
         <h1 className="landing-title">
           Where your campus <br />
-          <span className="landing-gradient-text">truly connects & talks.</span>
+          <span className="landing-accent-text">truly connects & talks.</span>
         </h1>
 
         <p className="landing-subtitle">
@@ -118,7 +118,7 @@ export default function LandingPage({ onLogin }: { onLogin: (user: any) => void 
         <div className="landing-grid">
           {/* Card 1: Random Chat */}
           <div className="landing-card">
-            <div className="landing-card-icon" style={{ background: 'rgba(91, 181, 162, 0.15)', color: '#5BB5A2' }}>
+            <div className="landing-card-icon" style={{ background: 'var(--accent-bg-strong)', color: 'var(--accent)' }}>
               <Shuffle size={24} />
             </div>
             <h3 className="landing-card-title">Random 1-on-1 Chat</h3>
@@ -129,7 +129,7 @@ export default function LandingPage({ onLogin }: { onLogin: (user: any) => void 
 
           {/* Card 2: Pulse Feed */}
           <div className="landing-card">
-            <div className="landing-card-icon" style={{ background: 'rgba(196, 149, 106, 0.15)', color: '#C4956A' }}>
+            <div className="landing-card-icon" style={{ background: 'var(--accent-bg-strong)', color: 'var(--accent)' }}>
               <Flame size={24} />
             </div>
             <h3 className="landing-card-title">Anonymous Pulse Feed</h3>
@@ -140,7 +140,7 @@ export default function LandingPage({ onLogin }: { onLogin: (user: any) => void 
 
           {/* Card 3: Groups & Hubs */}
           <div className="landing-card">
-            <div className="landing-card-icon" style={{ background: 'rgba(91, 142, 201, 0.15)', color: '#5B8EC9' }}>
+            <div className="landing-card-icon" style={{ background: 'var(--accent-bg-strong)', color: 'var(--accent)' }}>
               <Users size={24} />
             </div>
             <h3 className="landing-card-title">Clubs & Hostel Hubs</h3>
@@ -151,7 +151,7 @@ export default function LandingPage({ onLogin }: { onLogin: (user: any) => void 
 
           {/* Card 4: Bulletin Board */}
           <div className="landing-card">
-            <div className="landing-card-icon" style={{ background: 'rgba(199, 125, 138, 0.15)', color: '#C77D8A' }}>
+            <div className="landing-card-icon" style={{ background: 'var(--accent-bg-strong)', color: 'var(--accent)' }}>
               <Megaphone size={24} />
             </div>
             <h3 className="landing-card-title">Live Bulletin Board</h3>
@@ -162,44 +162,34 @@ export default function LandingPage({ onLogin }: { onLogin: (user: any) => void 
         </div>
       </section>
 
-      {/* Security & Privacy Banner */}
+      {/* Security & Verification Banner */}
       <section className="landing-security">
         <div className="landing-security-box">
-          <Lock size={28} className="landing-security-icon" />
-          <div>
-            <h4 style={{ fontSize: '1.05rem', fontWeight: 700, marginBottom: 4 }}>Student Privacy & Safety First</h4>
-            <p style={{ fontSize: '0.84rem', color: 'var(--text-secondary)', margin: 0 }}>
-              All anonymous sessions never disclose your identity unless both sides explicitly consent. Powered by secure student data encryption.
+          <ShieldCheck size={36} className="landing-security-icon" />
+          <div className="landing-security-text">
+            <h3>Verified Campus Inboxes Only</h3>
+            <p>
+              Every student confirms their college email domain (.edu, .ac.in, etc.) or PIN. No random outside spammers, no bots, completely private to universities.
             </p>
           </div>
+          <button
+            className="btn btn-secondary btn-pill btn-sm"
+            onClick={() => openAuth('signup')}
+          >
+            <Lock size={14} /> Verify Student ID
+          </button>
         </div>
       </section>
 
       {/* Footer */}
       <footer className="landing-footer">
-        <div>© 2026 CampusSparks. Built for Indian & Global University Students.</div>
-        <div style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
-          <button
-            className="landing-footer-link"
-            style={{ fontWeight: 600, color: 'var(--accent)', display: 'flex', alignItems: 'center', gap: 6 }}
-            onClick={() => {
-              onLogin({
-                id: 'admin_nilesh_gupta',
-                username: 'guptanilesh417',
-                email: 'guptanilesh417@gmail.com',
-                displayName: 'Nilesh Gupta',
-                avatar: '🎓',
-                major: 'Computer Science & Engineering',
-                graduationYear: 2026,
-                college: 'Campus Lead University',
-                pulseScore: 999,
-                isAdmin: true,
-              });
-            }}
-          >
-            <ShieldCheck size={16} /> Admin Portal (Nilesh Gupta)
-          </button>
-          <button className="landing-footer-link" onClick={() => openAuth('signin')}>Sign In</button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <Sparkles size={14} style={{ color: 'var(--accent)' }} />
+          <span>© 2026 CampusSparks. Built for university students worldwide.</span>
+        </div>
+        <div style={{ display: 'flex', gap: 16 }}>
+          <a href="#privacy" className="landing-footer-link">Privacy Policy</a>
+          <a href="#terms" className="landing-footer-link">Community Guidelines</a>
         </div>
       </footer>
 

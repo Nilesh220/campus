@@ -2543,16 +2543,8 @@ input, textarea, select { font-family: var(--font-primary); color: var(--text-pr
   margin-bottom: var(--space-xl);
 }
 
-@media (max-width: 640px) {
-  .landing-title {
-    font-size: 2.2rem;
-  }
-}
-
-.landing-gradient-text {
-  background: linear-gradient(135deg, var(--accent), #C4956A);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
+.landing-accent-text {
+  color: var(--accent);
 }
 
 .landing-subtitle {
@@ -2569,7 +2561,7 @@ input, textarea, select { font-family: var(--font-primary); color: var(--text-pr
   justify-content: center;
   gap: 14px;
   flex-wrap: wrap;
-  margin-bottom: 50px;
+  margin-bottom: 40px;
 }
 
 .landing-social-proof {
@@ -2577,11 +2569,12 @@ input, textarea, select { font-family: var(--font-primary); color: var(--text-pr
   align-items: center;
   justify-content: center;
   gap: 24px;
-  padding: 16px 28px;
+  padding: 14px 28px;
   background: var(--bg-secondary);
   border: 1px solid var(--border-light);
   border-radius: var(--radius-pill);
-  flex-wrap: wrap;
+  box-shadow: var(--shadow-xs);
+  margin-bottom: 20px;
 }
 
 .landing-stat {
@@ -2597,7 +2590,7 @@ input, textarea, select { font-family: var(--font-primary); color: var(--text-pr
 }
 
 .landing-stat .stat-lbl {
-  font-size: 0.68rem;
+  font-size: 0.7rem;
   color: var(--text-tertiary);
   font-weight: 500;
 }
@@ -2606,6 +2599,64 @@ input, textarea, select { font-family: var(--font-primary); color: var(--text-pr
   width: 1px;
   height: 28px;
   background: var(--border-light);
+}
+
+@media (max-width: 640px) {
+  .landing-nav {
+    padding: 0 12px;
+  }
+  .landing-nav-content {
+    height: 56px;
+  }
+  .landing-brand {
+    font-size: 1.15rem;
+  }
+  .landing-nav-actions {
+    gap: 6px;
+  }
+  .landing-nav-actions .btn {
+    padding: 6px 12px;
+    font-size: 0.8rem;
+  }
+  .landing-hero {
+    padding: 28px 16px 36px;
+  }
+  .landing-title {
+    font-size: 1.95rem;
+    letter-spacing: -0.6px;
+    line-height: 1.2;
+    margin-bottom: 12px;
+  }
+  .landing-subtitle {
+    font-size: 0.88rem;
+    line-height: 1.5;
+    margin-bottom: 22px;
+  }
+  .landing-cta-group {
+    flex-direction: column;
+    width: 100%;
+    gap: 10px;
+    margin-bottom: 28px;
+  }
+  .landing-cta-group .btn {
+    width: 100%;
+    justify-content: center;
+    padding: 13px 20px;
+    font-size: 0.92rem;
+  }
+  .landing-social-proof {
+    padding: 10px 16px;
+    gap: 12px;
+    border-radius: 18px;
+    width: 100%;
+    justify-content: space-around;
+  }
+  .landing-stat .stat-val {
+    font-size: 1.05rem;
+  }
+  .landing-stat .stat-lbl {
+    font-size: 0.65rem;
+  }
 }
 
 .landing-features {
