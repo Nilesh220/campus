@@ -97,7 +97,7 @@ export default function DirectMessages() {
             })
           ) : (
             <div style={{ padding: 28, textAlign: 'center', color: 'var(--text-tertiary)', fontSize: '0.84rem' }}>
-              No direct messages yet. Connect with classmates in Random Chat!
+              No direct messages yet. Connect with students across universities in Random Chat!
             </div>
           )}
         </div>

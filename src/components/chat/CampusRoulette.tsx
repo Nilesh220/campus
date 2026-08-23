@@ -6,7 +6,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import {
   Send, Sparkles, UserPlus, SkipForward, X, Zap, Shield,
-  MessageSquareQuote, RotateCcw, Copy, Check, KeyRound, Radio,
+  MessageSquareQuote, RotateCcw, Copy, Check,
   User, CheckCircle2
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
@@ -15,14 +15,14 @@ import { supabase } from '../../lib/supabase';
 import type { ChatMessage, AnonMatch } from '../../types';
 
 const SEARCHING_TIPS = [
-  'Searching through active campus departments and study halls...',
+  'Scanning active student hubs across universities...',
   'Select interest tags above to match with students of similar vibes.',
   'Your identity stays 100% anonymous until both sides choose to reveal.',
-  'Matching you with an online campus student...',
+  'Matching you with a student from another university...',
 ];
 
 const QUICK_STARTERS = [
-  'What major are you in?',
+  'What major are you in and which uni?',
   'Best food spot on campus?',
   'Studying or procrastinating right now?',
   'What music are you listening to?',
@@ -37,8 +37,6 @@ export default function RandomChat() {
   const [tipIndex, setTipIndex] = useState(0);
   const [copiedLink, setCopiedLink] = useState(false);
   const [peerRevealRequested, setPeerRevealRequested] = useState(false);
-  const [customRoomCode, setCustomRoomCode] = useState('');
-  const [activeTabMode, setActiveTabMode] = useState<'auto' | 'code'>('auto');
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const lobbyChannelRef = useRef<any>(null);
@@ -435,36 +433,16 @@ export default function RandomChat() {
           </div>
 
           <h1 className="match-title">
-            {isSearching ? 'Matching with a classmate...' : 'Random Student Chat'}
+            {isSearching ? 'Matching with a university student...' : 'Random Student Chat'}
           </h1>
           <p className="match-subtitle">
             {isSearching
               ? SEARCHING_TIPS[tipIndex]
-              : 'Chat 1-on-1 anonymously in real-time with fellow students across campus. Zero personal data shared unless you both agree to reveal.'}
+              : 'Chat 1-on-1 anonymously in real-time with students across universities. Zero personal data shared unless you both agree to reveal.'}
           </p>
 
-          {/* Mode Switcher */}
+          {/* Global Match Mode */}
           {!isSearching && (
-            <div style={{ display: 'flex', gap: 8, marginBottom: 20, background: 'var(--bg-tertiary)', padding: 4, borderRadius: 'var(--radius-pill)', border: '1px solid var(--border-light)', maxWidth: 360, width: '100%' }}>
-              <button
-                className={`btn btn-sm btn-pill ${activeTabMode === 'auto' ? 'btn-primary' : 'btn-ghost'}`}
-                onClick={() => setActiveTabMode('auto')}
-                style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}
-              >
-                <Radio size={14} /> Auto Match
-              </button>
-              <button
-                className={`btn btn-sm btn-pill ${activeTabMode === 'code' ? 'btn-primary' : 'btn-ghost'}`}
-                onClick={() => setActiveTabMode('code')}
-                style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}
-              >
-                <KeyRound size={14} /> Friend Code
-              </button>
-            </div>
-          )}
-
-          {/* Auto Match Mode */}
-          {!isSearching && activeTabMode === 'auto' && (
             <div className="match-filter-box">
               <div className="match-filter-header">
                 <span>Choose topic or vibe (optional):</span>
@@ -499,52 +477,7 @@ export default function RandomChat() {
 
               <div className="match-safety-note" style={{ marginTop: 14 }}>
                 <Shield size={14} />
-                <span>Encrypted live session. Be respectful to fellow students.</span>
-              </div>
-            </div>
-          )}
-
-          {/* Friend Code Mode */}
-          {!isSearching && activeTabMode === 'code' && (
-            <div className="match-filter-box" style={{ textAlign: 'center' }}>
-              <div style={{ fontSize: '0.92rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: 6 }}>
-                Connect Instantly with a Friend
-              </div>
-              <p style={{ fontSize: '0.8rem', color: 'var(--text-tertiary)', marginBottom: 16 }}>
-                Enter the exact same 4-digit code on both devices (e.g. <strong>7777</strong> or <strong>CAMPUS</strong>) to connect directly in 0.1s!
-              </p>
-
-              <div style={{ display: 'flex', gap: 8, maxWidth: 360, margin: '0 auto 16px', width: '100%' }}>
-                <input
-                  type="text"
-                  placeholder="Enter code (e.g. 7777)"
-                  value={customRoomCode}
-                  onChange={e => setCustomRoomCode(e.target.value.toUpperCase())}
-                  style={{ flex: 1, padding: '10px 14px', textAlign: 'center', fontSize: '1rem', fontWeight: 700, letterSpacing: 2, textTransform: 'uppercase', borderRadius: 'var(--radius-md)' }}
-                  onKeyDown={e => e.key === 'Enter' && customRoomCode.trim() && handleStartMatch(customRoomCode)}
-                />
-                <button
-                  className="btn btn-primary btn-pill"
-                  onClick={() => customRoomCode.trim() && handleStartMatch(customRoomCode)}
-                  disabled={!customRoomCode.trim()}
-                >
-                  Connect
-                </button>
-              </div>
-
-              <div style={{ display: 'flex', justifyContent: 'center', gap: 8, flexWrap: 'wrap' }}>
-                {['7777', '9999', 'ROOM1', 'HOSTEL'].map(preset => (
-                  <button
-                    key={preset}
-                    className="chip"
-                    onClick={() => {
-                      setCustomRoomCode(preset);
-                      handleStartMatch(preset);
-                    }}
-                  >
-                    Quick: {preset}
-                  </button>
-                ))}
+                <span>Encrypted live session. Open to verified university students worldwide.</span>
               </div>
             </div>
           )}
@@ -557,11 +490,11 @@ export default function RandomChat() {
                   <RotateCcw size={16} /> Cancel
                 </button>
                 <button className="btn btn-primary btn-pill" onClick={handleCopyInviteLink}>
-                  {copiedLink ? <><Check size={16} /> Link Copied!</> : <><Copy size={16} /> Invite Classmate</>}
+                  {copiedLink ? <><Check size={16} /> Link Copied!</> : <><Copy size={16} /> Share Invite Link</>}
                 </button>
               </div>
               <p style={{ fontSize: '0.78rem', color: 'var(--text-tertiary)', margin: 0 }}>
-                Share the link with a classmate — when both click "Start Random Chat", you connect instantly!
+                Share the link with any student — when both click "Start Random Chat", you match instantly!
               </p>
             </div>
           )}
