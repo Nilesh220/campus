@@ -3,7 +3,7 @@
 // Designated Super Admin: guptanilesh417@gmail.com (Nilesh Gupta)
 // ============================================================
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Shield, X, Trash2, Megaphone, Plus, Search,
   Flame, Users, CheckCircle2,
@@ -11,7 +11,8 @@ import {
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { SupabaseService } from '../../services/supabaseService';
-import { USERS, POST_CATEGORIES, ANNOUNCEMENT_CATEGORIES } from '../../data/mockData';
+import { supabase } from '../../lib/supabase';
+import { POST_CATEGORIES, ANNOUNCEMENT_CATEGORIES } from '../../data/mockData';
 import type { Announcement, PostCategory, AnnouncementCategory, Group } from '../../types';
 
 type AdminTab = 'analytics' | 'moderation' | 'students' | 'broadcast' | 'clubs' | 'safety' | 'system';
@@ -47,12 +48,26 @@ export default function AdminDashboard({ onClose }: { onClose: () => void }) {
   const [newBannedWord, setNewBannedWord] = useState('');
   const [freezeAnonymous, setFreezeAnonymous] = useState(false);
 
-  // Dynamic Student List (starts with mock USERS + current user)
-  const [studentList, setStudentList] = useState(USERS.map(u => ({
-    ...u,
-    status: u.id === 'u1' ? 'Super Admin' : u.id === 'u2' ? 'Club Lead' : 'Active Student',
-    isBanned: false,
-  })));
+  // Live Student List from Supabase
+  const [studentList, setStudentList] = useState<any[]>([]);
+
+  useEffect(() => {
+    supabase.from('profiles').select('*').then(({ data }) => {
+      if (data && data.length > 0) {
+        setStudentList(data.map(u => ({
+          id: u.id,
+          username: u.username,
+          displayName: u.display_name,
+          avatar: u.avatar || '🎓',
+          major: u.major || 'Computer Science',
+          email: u.email || `${u.username}@campus.edu`,
+          status: (u.email?.includes('guptanilesh417') || u.username === 'campus_admin') ? 'Super Admin' : 'Registered Student',
+          pulseScore: u.pulse_score || 100,
+          isBanned: false,
+        })));
+      }
+    });
+  }, []);
 
   // ── Handlers ───────────────────────────────────────────────
   const handleDeletePost = (postId: string) => {

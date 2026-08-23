@@ -1,5 +1,5 @@
 // ============================================================
-// UniPulse — Metadata, Bot Personalities & Utilities
+// CampusSparks — Metadata, Dynamic Generators & Utilities
 // Zero hardcoded demo feed arrays — 100% database driven
 // ============================================================
 
@@ -7,140 +7,33 @@ import type { User, Badge } from '../types';
 
 // ── Badges ──────────────────────────────────────────────────
 export const BADGES: Badge[] = [
-  { id: 'b1', name: 'OG Member', icon: '⭐', description: 'Joined in the launch phase', color: '#C4956A' },
-  { id: 'b2', name: 'Pulse Pioneer', icon: '🚀', description: '100+ upvotes received', color: '#5BB5A2' },
-  { id: 'b3', name: 'Night Owl', icon: '🦉', description: 'Active past midnight', color: '#5B8EC9' },
-  { id: 'b4', name: 'Connector', icon: '🤝', description: 'Connected via Random Chat', color: '#4A9E7F' },
-  { id: 'b5', name: 'Confession King', icon: '👑', description: 'Top confession poster', color: '#C77D8A' },
-  { id: 'b6', name: 'Study Buddy', icon: '📚', description: 'Helped fellow students', color: '#5B8EC9' },
-  { id: 'b7', name: 'Meme Lord', icon: '😂', description: 'Top campus humor poster', color: '#C4956A' },
+  { id: 'b1', name: 'OG Member', icon: '⭐', description: 'Joined in the launch phase', color: '#0D9488' },
+  { id: 'b2', name: 'Pulse Pioneer', icon: '🚀', description: '100+ upvotes received', color: '#14B8A6' },
+  { id: 'b3', name: 'Night Owl', icon: '🦉', description: 'Active past midnight', color: '#3B82F6' },
+  { id: 'b4', name: 'Connector', icon: '🤝', description: 'Connected via Random Chat', color: '#10B981' },
+  { id: 'b5', name: 'Confession King', icon: '👑', description: 'Top confession poster', color: '#8B5CF6' },
+  { id: 'b6', name: 'Study Buddy', icon: '📚', description: 'Helped fellow students', color: '#3B82F6' },
+  { id: 'b7', name: 'Meme Lord', icon: '😂', description: 'Top campus humor poster', color: '#F59E0B' },
 ];
 
 // ── Default Active Profile ──────────────────────────────────
 export const CURRENT_USER: User = {
-  id: 'u1',
-  username: 'campus_student',
-  displayName: 'Student Pulse',
+  id: 'u_student_1',
+  username: 'student',
+  displayName: 'Student',
   avatar: '🎓',
   major: 'Computer Science',
   graduationYear: 2027,
   college: 'Campus University',
-  bio: 'Building, learning & exploring campus life ☕',
-  hobbies: ['Coding', 'Gaming', 'Coffee', 'Design'],
-  pulseScore: 1240,
-  badges: [BADGES[0], BADGES[1]],
+  bio: 'Campus student',
+  hobbies: ['Campus Life', 'Tech'],
+  pulseScore: 0,
+  badges: [],
   isOnline: true,
-  joinedAt: '2026-01-10',
+  joinedAt: '2026-01-01',
 };
 
-// ── Dynamic Bot Personalities for Random Chat ───────────────
-export interface BotPeer {
-  id: string;
-  name: string;
-  major: string;
-  emoji: string;
-  persona: string;
-  responses: string[];
-}
-
-export const BOT_PEERS: BotPeer[] = [
-  {
-    id: 'bot_cs',
-    name: 'Neon Coder',
-    major: 'Computer Science',
-    emoji: '💻',
-    persona: 'DSA nerd, hackathon enthusiast, always caffeinated',
-    responses: [
-      "Haha totally! Currently debugging a React hook at 2 AM 😭",
-      "Are you preparing for placements / internships too?",
-      "Bro the Wi-Fi in the lab went down right in the middle of a push 💀",
-      "Which language do you code in mainly? Python or TS?",
-      "Honestly coffee is the only thing keeping my GPA alive ☕",
-      "That's awesome! We should team up for the next hackathon 🔥",
-      "Lmao yes! DP problems give me existential dread 🥲",
-      "Gotta love when the code works and you have no idea why 🚀",
-    ],
-  },
-  {
-    id: 'bot_art',
-    name: 'Velvet Artist',
-    major: 'Design & Visual Media',
-    emoji: '🎨',
-    persona: 'Figma addict, aesthetic lover, chai drinker',
-    responses: [
-      "No way, I love that aesthetic! ✨",
-      "I'm actually working on a typography project right now 🎨",
-      "Chai from Gate 2 canteen hits so differently during rain ☕🌧️",
-      "What music do you listen to while working? Need playlist recs!",
-      "The architecture of the new library wing is honestly stunning 🏛️",
-      "Haha that's so accurate! Design deadlines are wild 😭",
-      "I swear Figma components have taken over my brain lol",
-    ],
-  },
-  {
-    id: 'bot_music',
-    name: 'Lunar Beats',
-    major: 'Music & Sound Engineering',
-    emoji: '🎵',
-    persona: 'Lo-fi producer, guitarist, late night vibe',
-    responses: [
-      "Yo! Just finished laying down a new guitar loop 🎸",
-      "Are you going to the Open Mic this Friday at the amphitheater?",
-      "That track you mentioned is fire 🔥 on repeat today",
-      "Late night study playlist with lo-fi beats is pure therapy 🌙",
-      "Hostel acoustic sessions hit so different at midnight ✨",
-      "Haha true! The echo in the hostel staircase is studio quality 😂",
-    ],
-  },
-  {
-    id: 'bot_sports',
-    name: 'Golden Runner',
-    major: 'Sports Science',
-    emoji: '⚡',
-    persona: 'Gym early bird, cricket fan, high energy',
-    responses: [
-      "5 AM gym session was legendary today! 💪",
-      "Who's watching the inter-hostel match this weekend? 🏏",
-      "Mess food today was actually edible for once, miracle! 🤯",
-      "Sports complex badminton courts are packed every evening 🏸",
-      "Energy is everything on campus! Let's crush this semester 🔥",
-    ],
-  },
-];
-
-export const USERS: User[] = [
-  CURRENT_USER,
-  {
-    id: 'u2',
-    username: 'priya_creates',
-    displayName: 'Priya Patel',
-    avatar: '🎨',
-    major: 'Design & Visual Arts',
-    graduationYear: 2026,
-    college: 'Campus University',
-    bio: 'UI/UX dreamer 🎨 | Chai > Coffee',
-    hobbies: ['Design', 'Photography', 'Art'],
-    pulseScore: 980,
-    badges: [BADGES[0], BADGES[4]],
-    isOnline: true,
-    joinedAt: '2026-01-15',
-  },
-  {
-    id: 'u3',
-    username: 'rahul_beats',
-    displayName: 'Rahul Verma',
-    avatar: '🎸',
-    major: 'Music Production',
-    graduationYear: 2027,
-    college: 'Campus University',
-    bio: 'Guitar + Lo-fi beats 🎵',
-    hobbies: ['Music', 'Skateboarding'],
-    pulseScore: 760,
-    badges: [BADGES[2], BADGES[3]],
-    isOnline: false,
-    joinedAt: '2026-02-01',
-  },
-];
+export const USERS: User[] = [];
 
 const GENZ_PREFIXES = [
   'cyber', 'shadow', 'neon', 'void', 'astral', 'hyper', 'pixel', 'chill',
@@ -224,19 +117,19 @@ export const INTEREST_TAGS: string[] = [
 
 // ── Category Metadata ───────────────────────────────────────
 export const POST_CATEGORIES: Record<string, { label: string; icon: string; color: string }> = {
-  'confession': { label: 'Confession', icon: 'Ghost', color: '#A78BCA' },
-  'study': { label: 'Study & Doubts', icon: 'BookOpen', color: '#5B8EC9' },
-  'lost-found': { label: 'Lost & Found', icon: 'Search', color: '#C9943A' },
-  'campus-vibe': { label: 'Campus Vibe', icon: 'Zap', color: '#4A9E7F' },
-  'event': { label: 'Event', icon: 'Megaphone', color: '#C77D8A' },
-  'meme': { label: 'Meme', icon: 'Smile', color: '#C4956A' },
+  'confession': { label: 'Confession', icon: 'Ghost', color: '#8B5CF6' },
+  'study': { label: 'Study & Doubts', icon: 'BookOpen', color: '#3B82F6' },
+  'lost-found': { label: 'Lost & Found', icon: 'Search', color: '#F59E0B' },
+  'campus-vibe': { label: 'Campus Vibe', icon: 'Zap', color: '#10B981' },
+  'event': { label: 'Event', icon: 'Megaphone', color: '#EC4899' },
+  'meme': { label: 'Meme', icon: 'Smile', color: '#F97316' },
 };
 
 export const ANNOUNCEMENT_CATEGORIES: Record<string, { label: string; icon: string; color: string }> = {
-  'exam': { label: 'Examination', icon: 'FileText', color: '#C75C5C' },
-  'fest': { label: 'Fest & Festival', icon: 'Sparkles', color: '#A78BCA' },
-  'hackathon': { label: 'Hackathon', icon: 'Code', color: '#5BB5A2' },
-  'club': { label: 'Club Activity', icon: 'Users', color: '#C77D8A' },
-  'general': { label: 'General', icon: 'Bell', color: '#5B8EC9' },
-  'sports': { label: 'Sports', icon: 'Trophy', color: '#4A9E7F' },
+  'exam': { label: 'Examination', icon: 'FileText', color: '#EF4444' },
+  'fest': { label: 'Fest & Festival', icon: 'Sparkles', color: '#8B5CF6' },
+  'hackathon': { label: 'Hackathon', icon: 'Code', color: '#10B981' },
+  'club': { label: 'Club Activity', icon: 'Users', color: '#EC4899' },
+  'general': { label: 'General', icon: 'Bell', color: '#3B82F6' },
+  'sports': { label: 'Sports', icon: 'Trophy', color: '#10B981' },
 };
