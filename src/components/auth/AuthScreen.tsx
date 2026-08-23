@@ -110,10 +110,6 @@ export default function AuthScreen({ onAuthenticated }: { onAuthenticated: (user
     }
   };
 
-  const handleGuestEntry = () => {
-    onAuthenticated(CURRENT_USER);
-  };
-
   return (
     <div className="auth-container">
       <div className="auth-card">
@@ -268,22 +264,7 @@ export default function AuthScreen({ onAuthenticated }: { onAuthenticated: (user
           </button>
         </form>
 
-        {/* Divider */}
-        <div className="auth-divider">
-          <span>OR</span>
-        </div>
-
-        {/* Guest 1-Click Access */}
-        <button
-          type="button"
-          className="btn btn-secondary btn-pill"
-          style={{ width: '100%', padding: '11px', fontSize: '0.84rem' }}
-          onClick={handleGuestEntry}
-        >
-          ⚡ Instant Demo Student Access
-        </button>
-
-        <div className="auth-security-badge">
+        <div className="auth-security-badge" style={{ marginTop: 20 }}>
           <ShieldCheck size={14} />
           <span>Encrypted with Supabase PostgreSQL & Row Level Security</span>
         </div>

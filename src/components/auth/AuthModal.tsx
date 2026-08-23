@@ -187,26 +187,6 @@ export default function AuthModal({ initialMode = 'signup', onClose, onSuccess }
     }
   };
 
-  const handleGuestEntry = () => {
-    onSuccess({
-      id: 'demo_guest_1',
-      username: 'guest_student',
-      displayName: 'Guest Student',
-      avatar: '🎓',
-      email: 'guest@campus.edu',
-      major: 'Computer Science',
-      graduationYear: 2027,
-      college: 'Campus University',
-      bio: 'Exploring campus demo',
-      hobbies: ['Coding', 'Campus Life'],
-      badges: [],
-      isOnline: true,
-      joinedAt: new Date().toISOString(),
-      pulseScore: 100,
-      isAdmin: false,
-    });
-  };
-
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal auth-card" style={{ maxWidth: 460 }} onClick={e => e.stopPropagation()}>
@@ -441,20 +421,6 @@ export default function AuthModal({ initialMode = 'signup', onClose, onSuccess }
             </>
           )}
         </form>
-
-        <div className="auth-divider">
-          <span>OR</span>
-        </div>
-
-        {/* Guest Demo Entry */}
-        <button
-          type="button"
-          className="btn btn-secondary btn-pill"
-          style={{ width: '100%', padding: '11px', justifyContent: 'center', fontSize: '0.85rem' }}
-          onClick={handleGuestEntry}
-        >
-          Instant Student Guest Demo
-        </button>
       </div>
     </div>
   );

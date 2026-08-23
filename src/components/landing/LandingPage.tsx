@@ -67,26 +67,13 @@ export default function LandingPage({ onLogin }: { onLogin: (user: any) => void 
             className="btn btn-primary btn-lg btn-pill"
             onClick={() => openAuth('signup')}
           >
-            <Sparkles size={18} /> Join Your Campus Hub
+            <Sparkles size={18} /> Create Student Account
           </button>
           <button
             className="btn btn-secondary btn-lg btn-pill"
-            onClick={() => {
-              onLogin({
-                id: 'demo_student_guest',
-                username: 'guest_student',
-                email: 'student@campus.edu',
-                displayName: 'Student Guest',
-                avatar: '🎓',
-                major: 'Computer Science',
-                graduationYear: 2027,
-                college: 'Campus University',
-                pulseScore: 120,
-                isAdmin: false,
-              });
-            }}
+            onClick={() => openAuth('signin')}
           >
-            Instant Student Demo
+            Sign In to Account
           </button>
         </div>
 
