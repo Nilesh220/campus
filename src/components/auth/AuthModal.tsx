@@ -50,7 +50,6 @@ export default function AuthModal({ initialMode = 'signup', onClose, onSuccess }
   const [otpDigits, setOtpDigits] = useState<string[]>(['', '', '', '', '', '']);
   const [activeOtp, setActiveOtp] = useState<string>('');
   const [otpError, setOtpError] = useState<string | null>(null);
-  const [emailDelivered, setEmailDelivered] = useState<boolean>(true);
   const [resendCooldown, setResendCooldown] = useState<number>(0);
   const [pendingUser, setPendingUser] = useState<any>(null);
   const [authFlowType, setAuthFlowType] = useState<'signup' | 'signin'>('signup');
@@ -101,8 +100,7 @@ export default function AuthModal({ initialMode = 'signup', onClose, onSuccess }
       console.warn('Supabase OTP notice:', e);
     }
 
-    const res = await EmailService.sendVerificationCode(targetEmail, code, name, type);
-    setEmailDelivered(res.success);
+    await EmailService.sendVerificationCode(targetEmail, code, name, type);
   };
 
 function autoFixEmail(val: string): string {
@@ -366,8 +364,7 @@ function autoFixEmail(val: string): string {
     setLoading(true);
     setOtpError(null);
 
-    const isMasterCode = ['123456', '000000', '777777', '999999'].includes(enteredCode);
-    let isCodeValid = (activeOtp && enteredCode === activeOtp) || isMasterCode;
+    let isCodeValid = Boolean(activeOtp && enteredCode === activeOtp);
 
     // Also attempt Supabase native OTP verification if not matching local code
     if (!isCodeValid && pendingUser?.email && supabase) {
@@ -440,15 +437,8 @@ function autoFixEmail(val: string): string {
       }
     } else {
       setLoading(false);
-      setOtpError('Invalid code. Please check your email or click "⚡ Tap to Autofill & Verify" below.');
+      setOtpError('Invalid verification code. Please check your email inbox and try again.');
     }
-  };
-
-  const handleAutofillCode = () => {
-    const codeToUse = activeOtp || '123456';
-    const digits = codeToUse.split('');
-    setOtpDigits(digits);
-    verifyOtpCode(codeToUse);
   };
 
   const handleResendClick = async () => {
@@ -471,32 +461,13 @@ function autoFixEmail(val: string): string {
             {authFlowType === 'signup' ? 'Verify Your Account' : 'Enter One-Time Passcode'}
           </h2>
 
-          <p style={{ fontSize: '0.86rem', color: 'var(--text-secondary)', lineHeight: 1.5, marginBottom: 12 }}>
+          <p style={{ fontSize: '0.86rem', color: 'var(--text-secondary)', lineHeight: 1.5, marginBottom: 16 }}>
             We've sent a 6-digit confirmation code to:<br />
-            <strong style={{ color: 'var(--text-primary)', fontSize: '0.92rem' }}>{pendingUser?.email}</strong>
+            <strong style={{ color: 'var(--text-primary)', fontSize: '0.94rem' }}>{pendingUser?.email}</strong>
           </p>
 
-          {/* Delivery Status & Instant Autofill Helper */}
-          <div style={{ background: 'var(--bg-tertiary)', border: '1px solid var(--border-light)', borderRadius: 'var(--radius-md)', padding: '12px 14px', marginBottom: 14, fontSize: '0.82rem', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, color: 'var(--accent)', marginBottom: 6, fontWeight: 600 }}>
-              <Check size={14} /> {emailDelivered ? 'Verification email dispatched to your inbox!' : 'Verification code generated!'}
-            </div>
-            <div style={{ fontSize: '0.78rem', color: 'var(--text-tertiary)' }}>
-              Check your email, or tap below to auto-verify instantly:
-            </div>
-            <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10 }}>
-              <strong style={{ color: 'var(--accent)', fontSize: '1.1rem', letterSpacing: 4, background: 'var(--bg-secondary)', padding: '3px 10px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-light)' }}>
-                {activeOtp || '123456'}
-              </strong>
-              <button
-                type="button"
-                onClick={handleAutofillCode}
-                className="btn btn-sm btn-pill"
-                style={{ background: 'var(--accent-bg-strong)', color: 'var(--accent)', border: '1px solid var(--accent)', padding: '5px 12px', fontSize: '0.76rem', fontWeight: 700 }}
-              >
-                ⚡ Autofill & Verify
-              </button>
-            </div>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, color: 'var(--accent)', fontSize: '0.82rem', marginBottom: 20, fontWeight: 600 }}>
+            <Check size={15} /> 6-digit confirmation code dispatched to your inbox!
           </div>
 
           {/* 6 Digit Input Boxes */}
