@@ -216,27 +216,27 @@ export const BOT_RESPONSES: string[] = [
 
 // ── Interest Tags for Matching ──────────────────────────────
 export const INTEREST_TAGS: string[] = [
-  '💻 Coding', '🎮 Gaming', '🎵 Music', '📚 Study Buddy', '🎬 Movies',
-  '☕ Coffee Chat', '🏋️ Fitness', '🎨 Art & Design', '📸 Photography',
-  '🌙 Late Night Vibes', '🍕 Foodies', '🏏 Cricket', '🧠 Deep Talks',
-  '😂 Memes & Fun', '🚀 Startups', '📖 Book Club',
+  'Coding', 'Gaming', 'Music', 'Study Buddy', 'Movies',
+  'Coffee Chat', 'Fitness', 'Art & Design', 'Photography',
+  'Late Night Vibes', 'Foodies', 'Cricket', 'Deep Talks',
+  'Memes & Fun', 'Startups', 'Book Club',
 ];
 
 // ── Category Metadata ───────────────────────────────────────
 export const POST_CATEGORIES: Record<string, { label: string; icon: string; color: string }> = {
-  'confession': { label: 'Confession', icon: '🎭', color: '#A78BCA' },
-  'study': { label: 'Study / Query', icon: '📚', color: '#5B8EC9' },
-  'lost-found': { label: 'Lost & Found', icon: '🔍', color: '#C9943A' },
-  'campus-vibe': { label: 'Campus Vibe', icon: '⚡', color: '#4A9E7F' },
-  'event': { label: 'Event', icon: '📢', color: '#C77D8A' },
-  'meme': { label: 'Meme', icon: '😂', color: '#C4956A' },
+  'confession': { label: 'Confession', icon: 'Ghost', color: '#A78BCA' },
+  'study': { label: 'Study & Doubts', icon: 'BookOpen', color: '#5B8EC9' },
+  'lost-found': { label: 'Lost & Found', icon: 'Search', color: '#C9943A' },
+  'campus-vibe': { label: 'Campus Vibe', icon: 'Zap', color: '#4A9E7F' },
+  'event': { label: 'Event', icon: 'Megaphone', color: '#C77D8A' },
+  'meme': { label: 'Meme', icon: 'Smile', color: '#C4956A' },
 };
 
 export const ANNOUNCEMENT_CATEGORIES: Record<string, { label: string; icon: string; color: string }> = {
-  'exam': { label: 'Examination', icon: '📝', color: '#C75C5C' },
-  'fest': { label: 'Fest & Festival', icon: '🎉', color: '#A78BCA' },
-  'hackathon': { label: 'Hackathon', icon: '💡', color: '#5BB5A2' },
-  'club': { label: 'Club Activity', icon: '🎤', color: '#C77D8A' },
-  'general': { label: 'General', icon: '📋', color: '#5B8EC9' },
-  'sports': { label: 'Sports', icon: '🏆', color: '#4A9E7F' },
+  'exam': { label: 'Examination', icon: 'FileText', color: '#C75C5C' },
+  'fest': { label: 'Fest & Festival', icon: 'Sparkles', color: '#A78BCA' },
+  'hackathon': { label: 'Hackathon', icon: 'Code', color: '#5BB5A2' },
+  'club': { label: 'Club Activity', icon: 'Users', color: '#C77D8A' },
+  'general': { label: 'General', icon: 'Bell', color: '#5B8EC9' },
+  'sports': { label: 'Sports', icon: 'Trophy', color: '#4A9E7F' },
 };

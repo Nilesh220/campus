@@ -1,9 +1,5 @@
-// ============================================================
-// Direct Messages — Identified & Anonymous Friends
-// ============================================================
-
 import { useState, useRef, useEffect } from 'react';
-import { Send } from 'lucide-react';
+import { Send, MessageCircle, User, Ghost } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { USERS, CURRENT_USER } from '../../data/mockData';
 
@@ -18,14 +14,12 @@ export default function DirectMessages() {
         ? {
             id: activeConv.participantId,
             displayName: activeConv.peerPseudonym || 'Anonymous Peer',
-            avatar: activeConv.peerEmoji || '🎭',
             major: 'Anonymous Connection',
             isOnline: true,
           }
         : USERS.find(u => u.id === activeConv.participantId) || {
             id: activeConv.participantId,
             displayName: 'Campus Student',
-            avatar: '🎓',
             major: 'Student',
             isOnline: true,
           })
@@ -42,21 +36,24 @@ export default function DirectMessages() {
   };
 
   return (
-    <div className="app-content" style={{ maxWidth: 860, padding: 0 }}>
-      <div style={{ padding: 'var(--space-2xl) var(--space-lg) var(--space-sm)' }}>
-        <h1 className="feed-title">Direct Messages</h1>
-        <p className="feed-subtitle">Private chats with your identified campus friends & anonymous connections.</p>
+    <div className="app-content" style={{ maxWidth: 920, padding: '16px 12px', margin: '0 auto' }}>
+      <div style={{ paddingBottom: 16 }}>
+        <h1 className="feed-title" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <MessageCircle size={24} style={{ color: 'var(--accent)' }} /> Direct Messages
+        </h1>
+        <p className="feed-subtitle">Private chats with your campus friends and anonymous connections.</p>
       </div>
 
-      <div className="dm-layout" style={{ margin: '0 var(--space-lg)' }}>
+      <div className="dm-layout">
         {/* Contacts List */}
         <div className="dm-contacts">
-          <div className="dm-contacts-header">💬 Conversations ({state.conversations.length})</div>
+          <div className="dm-contacts-header" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <MessageCircle size={16} /> Conversations ({state.conversations.length})
+          </div>
           {state.conversations.length > 0 ? (
             state.conversations.map(conv => {
               const isAnon = conv.isAnonymous;
               const name = isAnon ? (conv.peerPseudonym || 'Anonymous Peer') : (USERS.find(u => u.id === conv.participantId)?.displayName || 'Campus Student');
-              const avatar = isAnon ? (conv.peerEmoji || '🎭') : (USERS.find(u => u.id === conv.participantId)?.avatar || '🎓');
 
               return (
                 <div
@@ -67,13 +64,16 @@ export default function DirectMessages() {
                   <div
                     className="user-avatar"
                     style={{
-                      background: 'var(--accent-bg-strong)',
+                      background: isAnon ? 'rgba(167, 139, 202, 0.15)' : 'var(--accent-bg-strong)',
+                      color: isAnon ? '#A78BCA' : 'var(--accent)',
                       width: 40,
                       height: 40,
-                      fontSize: '1.1rem',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
                     }}
                   >
-                    {avatar}
+                    {isAnon ? <Ghost size={20} /> : <User size={20} />}
                   </div>
                   <div className="dm-contact-info">
                     <div className="dm-contact-name" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
@@ -96,59 +96,58 @@ export default function DirectMessages() {
               );
             })
           ) : (
-            <div style={{ padding: 24, textAlign: 'center', color: 'var(--text-tertiary)', fontSize: '0.85rem' }}>
-              No direct messages yet. Connect with someone through Random Chat! 💬
+            <div style={{ padding: 28, textAlign: 'center', color: 'var(--text-tertiary)', fontSize: '0.84rem' }}>
+              No direct messages yet. Connect with classmates in Random Chat!
             </div>
           )}
         </div>
 
-        {/* Chat Area */}
+        {/* Active Conversation Room */}
         <div className="dm-chat">
           {activeConv && activeParticipant ? (
             <>
-              {/* Chat Header */}
-              <div className="chat-header">
-                <div className="chat-header-info">
-                  <div
-                    className="user-avatar"
-                    style={{ background: 'var(--accent-bg-strong)', width: 36, height: 36, fontSize: '1rem' }}
-                  >
-                    {activeParticipant.avatar}
+              {/* Header */}
+              <div className="dm-chat-header">
+                <div
+                  className="user-avatar"
+                  style={{
+                    background: activeConv.isAnonymous ? 'rgba(167, 139, 202, 0.15)' : 'var(--accent-bg-strong)',
+                    color: activeConv.isAnonymous ? '#A78BCA' : 'var(--accent)',
+                    width: 36,
+                    height: 36,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  {activeConv.isAnonymous ? <Ghost size={18} /> : <User size={18} />}
+                </div>
+                <div>
+                  <div className="dm-chat-name" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    {activeParticipant.displayName}
+                    {activeConv.isAnonymous ? (
+                      <span className="anon-badge">Anonymous Connection</span>
+                    ) : (
+                      <span className="anon-badge" style={{ background: 'var(--accent-bg)', color: 'var(--accent)' }}>Campus Peer</span>
+                    )}
                   </div>
-                  <div>
-                    <div className="chat-pseudonym">
-                      {activeParticipant.displayName}
-                      {activeConv.isAnonymous && (
-                        <span className="chat-anon-tag">100% Private & Anonymous</span>
-                      )}
-                    </div>
-                    <div className="chat-pseudonym-sub">
-                      {activeConv.isAnonymous
-                        ? 'Anonymous Direct Message Session'
-                        : `🟢 Online • ${activeParticipant.major}`}
-                    </div>
+                  <div className="dm-chat-status">
+                    {activeParticipant.major}
                   </div>
                 </div>
-                {!activeConv.isAnonymous && (
-                  <button
-                    className="btn btn-ghost btn-sm"
-                    onClick={() => dispatch({ type: 'TOGGLE_PROFILE', payload: activeParticipant.id })}
-                  >
-                    View Profile
-                  </button>
-                )}
               </div>
 
-              {/* Messages */}
+              {/* Messages Feed */}
               <div className="chat-messages">
                 {activeConv.messages.map(msg => {
-                  const isSentByMe = msg.senderId === (state.currentUser || CURRENT_USER).id;
+                  const me = state.currentUser || CURRENT_USER;
+                  const isSentByMe = msg.senderId === me.id;
                   return (
                     <div
                       key={msg.id}
                       className={`chat-bubble ${isSentByMe ? 'sent' : 'received'}`}
                     >
-                      {msg.content}
+                      <div>{msg.content}</div>
                       <div className="chat-bubble-time">
                         {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                       </div>
@@ -158,7 +157,7 @@ export default function DirectMessages() {
                 <div ref={messagesEndRef} />
               </div>
 
-              {/* Input */}
+              {/* Input Area */}
               <div className="chat-input-area">
                 <input
                   type="text"
@@ -172,16 +171,19 @@ export default function DirectMessages() {
                   className="chat-send-btn"
                   onClick={handleSend}
                   disabled={!dmInput.trim()}
-                  style={{ opacity: dmInput.trim() ? 1 : 0.5 }}
+                  style={{ opacity: dmInput.trim() ? 1 : 0.4 }}
                 >
-                  <Send size={18} />
+                  <Send size={16} />
                 </button>
               </div>
             </>
           ) : (
-            <div className="dm-empty">
-              <div className="dm-empty-icon">💬</div>
-              <p>Select a conversation or connect through Random Chat</p>
+            <div className="dm-empty" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', minHeight: 320 }}>
+              <div className="dm-empty-icon" style={{ background: 'var(--accent-bg-strong)', color: 'var(--accent)', width: 64, height: 64, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 16 }}>
+                <MessageCircle size={32} />
+              </div>
+              <div style={{ fontSize: '1.05rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: 4 }}>Select a Conversation</div>
+              <div style={{ fontSize: '0.84rem', color: 'var(--text-tertiary)' }}>Choose a conversation from the left to start messaging.</div>
             </div>
           )}
         </div>

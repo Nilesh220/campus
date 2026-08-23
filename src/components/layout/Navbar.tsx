@@ -1,16 +1,21 @@
+// ============================================================
+// CampusSparks — Navigation Bar
+// Professional Lucide Icons, Search & Responsive Header
+// ============================================================
+
 import { useState, useRef, useEffect } from 'react';
-import { Search, Bell, Menu, Sun, Moon, UserPlus, Check, X } from 'lucide-react';
+import { Search, Bell, Menu, Sun, Moon, UserPlus, Check, X, User as UserIcon, Users as UsersIcon, Sparkles } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { CURRENT_USER, USERS } from '../../data/mockData';
 import NotificationDropdown from '../shared/NotificationDropdown';
 import type { User, DirectConversation } from '../../types';
 
 const TAB_TITLES: Record<string, string> = {
-  feed: 'Pulse Feed 🔥',
-  match: 'Random Chat ⚡',
-  groups: 'Groups & Hubs 👥',
-  bulletin: 'Bulletin Board 📢',
-  messages: 'Direct Messages 💬',
+  feed: 'Pulse Feed',
+  match: 'Random Chat',
+  groups: 'Groups & Hubs',
+  bulletin: 'Bulletin Board',
+  messages: 'Direct Messages',
 };
 
 export default function Navbar() {
@@ -21,7 +26,7 @@ export default function Navbar() {
   const searchRef = useRef<HTMLDivElement>(null);
 
   const unreadNotifs = state.notifications.filter(n => !n.isRead).length;
-  const currentAvatar = (state.currentUser || CURRENT_USER).avatar;
+  const currentUser = state.currentUser || CURRENT_USER;
 
   // Search Results
   const matchedUsers = USERS.filter(u => {
@@ -58,13 +63,13 @@ export default function Navbar() {
       messages: [
         {
           id: `dm_${Date.now()}`,
-          senderId: (state.currentUser || CURRENT_USER).id,
-          content: `👋 Hey @${user.username}! Friend request sent from ${(state.currentUser || CURRENT_USER).displayName}`,
+          senderId: currentUser.id,
+          content: `Hey @${user.username}! Friend request sent from ${currentUser.displayName}`,
           timestamp: new Date().toISOString(),
           type: 'text',
         },
       ],
-      lastMessage: `Friend request sent to @${user.username} ✨`,
+      lastMessage: `Friend request sent to @${user.username}`,
       lastMessageAt: new Date().toISOString(),
       unreadCount: 0,
     };
@@ -93,7 +98,9 @@ export default function Navbar() {
           }
         `}</style>
 
-        <span className="navbar-logo">CampusSparks</span>
+        <span className="navbar-logo" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <Sparkles size={18} style={{ color: 'var(--accent)' }} /> CampusSparks
+        </span>
         <span className="navbar-title">{TAB_TITLES[state.activeTab] || 'CampusSparks'}</span>
       </div>
 
@@ -103,7 +110,7 @@ export default function Navbar() {
           <Search size={16} />
           <input
             type="text"
-            placeholder="Search @username, fests, hubs..."
+            placeholder="Search @username, hubs, major..."
             value={searchQuery}
             onChange={e => {
               setSearchQuery(e.target.value);
@@ -137,11 +144,12 @@ export default function Navbar() {
                 zIndex: 110,
                 maxHeight: 380,
                 overflowY: 'auto',
+                borderRadius: 'var(--radius-lg)',
               }}
             >
               {/* Users Header */}
-              <div style={{ fontSize: '0.7rem', textTransform: 'uppercase', fontWeight: 700, color: 'var(--text-tertiary)', marginBottom: 8, letterSpacing: 0.5 }}>
-                Students & Peers ({matchedUsers.length})
+              <div style={{ fontSize: '0.7rem', textTransform: 'uppercase', fontWeight: 700, color: 'var(--text-tertiary)', marginBottom: 8, letterSpacing: 0.5, display: 'flex', alignItems: 'center', gap: 4 }}>
+                <UserIcon size={12} /> Students & Peers ({matchedUsers.length})
               </div>
 
               {matchedUsers.length > 0 ? (
@@ -161,7 +169,9 @@ export default function Navbar() {
                         }}
                       >
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                          <span style={{ fontSize: '1.2rem' }}>{user.avatar}</span>
+                          <div style={{ width: 30, height: 30, borderRadius: '50%', background: 'var(--accent-bg-strong)', color: 'var(--accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.75rem', fontWeight: 700 }}>
+                            {user.displayName.charAt(0)}
+                          </div>
                           <div>
                             <div style={{ fontSize: '0.82rem', fontWeight: 700, color: 'var(--text-primary)' }}>
                               {user.displayName}
@@ -200,8 +210,8 @@ export default function Navbar() {
               {/* Groups Header */}
               {matchedGroups.length > 0 && (
                 <>
-                  <div style={{ fontSize: '0.7rem', textTransform: 'uppercase', fontWeight: 700, color: 'var(--text-tertiary)', marginBottom: 8, letterSpacing: 0.5 }}>
-                    Campus Hubs ({matchedGroups.length})
+                  <div style={{ fontSize: '0.7rem', textTransform: 'uppercase', fontWeight: 700, color: 'var(--text-tertiary)', marginBottom: 8, letterSpacing: 0.5, display: 'flex', alignItems: 'center', gap: 4 }}>
+                    <UsersIcon size={12} /> Campus Hubs ({matchedGroups.length})
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                     {matchedGroups.map(group => (
@@ -222,7 +232,9 @@ export default function Navbar() {
                           setShowSearchResults(false);
                         }}
                       >
-                        <span style={{ fontSize: '1.2rem' }}>{group.icon}</span>
+                        <div style={{ width: 30, height: 30, borderRadius: 'var(--radius-sm)', background: 'var(--accent-bg-strong)', color: 'var(--accent)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                          <UsersIcon size={16} />
+                        </div>
                         <div>
                           <div style={{ fontSize: '0.82rem', fontWeight: 700, color: 'var(--text-primary)' }}>
                             {group.name}
@@ -246,7 +258,7 @@ export default function Navbar() {
           onClick={() => dispatch({ type: 'SET_THEME', payload: state.theme === 'light' ? 'dark' : 'light' })}
           title={`Switch to ${state.theme === 'light' ? 'dark' : 'light'} mode`}
         >
-          {state.theme === 'light' ? <Moon size={20} /> : <Sun size={20} />}
+          {state.theme === 'light' ? <Moon size={18} /> : <Sun size={18} />}
         </button>
 
         {/* Notifications */}
@@ -255,7 +267,7 @@ export default function Navbar() {
             className="icon-btn"
             onClick={() => dispatch({ type: 'TOGGLE_NOTIFICATIONS' })}
           >
-            <Bell size={20} />
+            <Bell size={18} />
             {unreadNotifs > 0 && <span className="badge-count">{unreadNotifs}</span>}
           </button>
           {state.showNotifications && <NotificationDropdown />}
@@ -265,10 +277,10 @@ export default function Navbar() {
         <div
           className="user-avatar online-indicator"
           onClick={() => dispatch({ type: 'TOGGLE_PROFILE' })}
-          style={{ cursor: 'pointer' }}
+          style={{ cursor: 'pointer', background: 'var(--accent-bg-strong)', color: 'var(--accent)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
           title="Open Profile"
         >
-          {currentAvatar}
+          <UserIcon size={18} />
         </div>
       </div>
     </header>

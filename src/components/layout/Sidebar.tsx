@@ -5,18 +5,18 @@
 import { useState } from 'react';
 import {
   Flame, Shuffle, Users, Megaphone, MessageCircle,
-  Settings, LogOut,
+  Settings, LogOut, ShieldCheck, User, Sparkles
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { CURRENT_USER } from '../../data/mockData';
 import type { NavTab } from '../../types';
 
 const NAV_ITEMS: { id: NavTab; label: string; icon: React.ReactNode }[] = [
-  { id: 'feed', label: 'Pulse Feed', icon: <Flame size={20} /> },
-  { id: 'match', label: 'Random Chat', icon: <Shuffle size={20} /> },
-  { id: 'groups', label: 'Groups & Hubs', icon: <Users size={20} /> },
-  { id: 'bulletin', label: 'Bulletin Board', icon: <Megaphone size={20} /> },
-  { id: 'messages', label: 'Direct Messages', icon: <MessageCircle size={20} /> },
+  { id: 'feed', label: 'Pulse Feed', icon: <Flame size={19} /> },
+  { id: 'match', label: 'Random Chat', icon: <Shuffle size={19} /> },
+  { id: 'groups', label: 'Groups & Hubs', icon: <Users size={19} /> },
+  { id: 'bulletin', label: 'Bulletin Board', icon: <Megaphone size={19} /> },
+  { id: 'messages', label: 'Direct Messages', icon: <MessageCircle size={19} /> },
 ];
 
 export default function Sidebar() {
@@ -24,6 +24,8 @@ export default function Sidebar() {
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 
   const unreadDMs = state.conversations.reduce((sum, c) => sum + c.unreadCount, 0);
+  const currentUser = state.currentUser || CURRENT_USER;
+  const isAdmin = currentUser.isAdmin || currentUser.email?.toLowerCase().includes('guptanilesh417');
 
   return (
     <>
@@ -35,7 +37,8 @@ export default function Sidebar() {
 
       <aside className={`sidebar ${state.sidebarOpen ? 'open' : ''}`}>
         {/* Brand */}
-        <div className="sidebar-header">
+        <div className="sidebar-header" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <Sparkles size={20} style={{ color: 'var(--accent)' }} />
           <span className="sidebar-brand">CampusSparks</span>
         </div>
 
@@ -60,16 +63,16 @@ export default function Sidebar() {
           ))}
 
           <span className="sidebar-label" style={{ marginTop: 'auto' }}>
-            {(state.currentUser?.isAdmin || state.currentUser?.email?.toLowerCase().includes('guptanilesh417') || state.currentUser?.displayName?.toLowerCase().includes('guptanilesh417')) ? 'Settings & Admin' : 'Settings'}
+            {isAdmin ? 'Management' : 'Settings'}
           </span>
-          {(state.currentUser?.isAdmin || state.currentUser?.email?.toLowerCase().includes('guptanilesh417') || state.currentUser?.displayName?.toLowerCase().includes('guptanilesh417')) && (
+          {isAdmin && (
             <button className="sidebar-item" onClick={() => dispatch({ type: 'TOGGLE_ADMIN' })}>
-              <Settings size={20} />
-              Admin Dashboard
+              <ShieldCheck size={19} style={{ color: 'var(--accent)' }} />
+              Admin Portal
             </button>
           )}
           <button className="sidebar-item" onClick={() => dispatch({ type: 'TOGGLE_PREFERENCES' })}>
-            <Settings size={20} />
+            <Settings size={19} />
             Preferences
           </button>
           <button
@@ -77,7 +80,7 @@ export default function Sidebar() {
             onClick={() => setShowLogoutConfirm(true)}
             style={{ color: 'var(--color-error)' }}
           >
-            <LogOut size={20} />
+            <LogOut size={19} />
             Log Out
           </button>
         </nav>
@@ -87,13 +90,14 @@ export default function Sidebar() {
           <div
             className="user-avatar online-indicator"
             onClick={() => dispatch({ type: 'TOGGLE_PROFILE' })}
+            style={{ background: 'var(--accent-bg-strong)', color: 'var(--accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
           >
-            {(state.currentUser || CURRENT_USER).avatar}
+            <User size={18} />
           </div>
-          <div className="sidebar-footer-info">
-            <div className="sidebar-footer-name">{(state.currentUser || CURRENT_USER).displayName}</div>
+          <div className="sidebar-footer-info" onClick={() => dispatch({ type: 'TOGGLE_PROFILE' })} style={{ cursor: 'pointer' }}>
+            <div className="sidebar-footer-name">{currentUser.displayName}</div>
             <div className="sidebar-footer-major">
-              @{(state.currentUser || CURRENT_USER).username || (state.currentUser || CURRENT_USER).email?.split('@')[0] || 'student'} • {(state.currentUser || CURRENT_USER).major}
+              @{currentUser.username || currentUser.email?.split('@')[0] || 'student'} • {currentUser.major}
             </div>
           </div>
         </div>
@@ -103,42 +107,25 @@ export default function Sidebar() {
       {showLogoutConfirm && (
         <div className="modal-overlay" onClick={() => setShowLogoutConfirm(false)}>
           <div className="modal" style={{ maxWidth: 380, padding: 24, textAlign: 'center' }} onClick={e => e.stopPropagation()}>
-            <div
-              style={{
-                width: 52,
-                height: 52,
-                borderRadius: 'var(--radius-pill)',
-                background: 'rgba(199, 92, 92, 0.12)',
-                color: 'var(--color-error)',
-                display: 'inline-flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                marginBottom: 16,
-              }}
-            >
+            <div style={{ width: 48, height: 48, borderRadius: '50%', background: 'rgba(199, 92, 92, 0.15)', color: 'var(--color-error)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
               <LogOut size={24} />
             </div>
-            <h3 style={{ fontSize: '1.15rem', fontWeight: 700, marginBottom: 8, color: 'var(--text-primary)' }}>
-              Log out of CampusSparks?
-            </h3>
-            <p style={{ fontSize: '0.84rem', color: 'var(--text-secondary)', marginBottom: 20, lineHeight: 1.5 }}>
-              You will be signed out and returned to the campus landing page.
+            <div style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: 6 }}>
+              Confirm Log Out
+            </div>
+            <p style={{ fontSize: '0.84rem', color: 'var(--text-tertiary)', marginBottom: 20 }}>
+              Are you sure you want to end your active session on CampusSparks?
             </p>
-            <div style={{ display: 'flex', gap: 10 }}>
-              <button
-                className="btn btn-secondary btn-pill"
-                style={{ flex: 1 }}
-                onClick={() => setShowLogoutConfirm(false)}
-              >
+            <div style={{ display: 'flex', gap: 10, justifyContent: 'center' }}>
+              <button className="btn btn-ghost btn-pill" onClick={() => setShowLogoutConfirm(false)}>
                 Cancel
               </button>
               <button
                 className="btn btn-primary btn-pill"
-                style={{ flex: 1, background: 'var(--color-error)', borderColor: 'var(--color-error)' }}
+                style={{ background: 'var(--color-error)', borderColor: 'var(--color-error)', color: 'white' }}
                 onClick={() => {
                   setShowLogoutConfirm(false);
                   dispatch({ type: 'LOGOUT_USER' });
-                  dispatch({ type: 'CLOSE_SIDEBAR' });
                 }}
               >
                 Log Out

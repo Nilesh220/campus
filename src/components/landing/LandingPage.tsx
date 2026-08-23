@@ -1,11 +1,12 @@
 // ============================================================
-// CampusSparks / UniPulse — Premium Student Landing Page
+// CampusSparks — Premium Student Landing Page
+// Clean Professional Lucide Icons & Responsive Design
 // ============================================================
 
 import { useState } from 'react';
 import {
-  Sparkles, Flame, Shuffle, Users, Megaphone, Shield,
-  ArrowRight, LogIn
+  Sparkles, Flame, Shuffle, Users, Megaphone,
+  ArrowRight, LogIn, ShieldCheck, Lock
 } from 'lucide-react';
 import AuthModal from '../auth/AuthModal';
 
@@ -23,8 +24,8 @@ export default function LandingPage({ onLogin }: { onLogin: (user: any) => void 
       {/* Top Landing Navbar */}
       <header className="landing-nav">
         <div className="landing-nav-content">
-          <div className="landing-brand">
-            <span className="landing-brand-icon">⚡</span>
+          <div className="landing-brand" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <Sparkles size={20} style={{ color: 'var(--accent)' }} />
             <span>CampusSparks</span>
           </div>
 
@@ -73,6 +74,7 @@ export default function LandingPage({ onLogin }: { onLogin: (user: any) => void 
             onClick={() => {
               onLogin({
                 id: 'demo_student_guest',
+                username: 'guest_student',
                 email: 'student@campus.edu',
                 displayName: 'Student Guest',
                 avatar: '🎓',
@@ -84,24 +86,24 @@ export default function LandingPage({ onLogin }: { onLogin: (user: any) => void 
               });
             }}
           >
-            ⚡ Instant Student Demo
+            Instant Student Demo
           </button>
         </div>
 
         <div className="landing-social-proof">
           <div className="landing-stat">
-            <span className="stat-val">&lt; 3s</span>
-            <span className="stat-lbl">Random Matchmaking</span>
+            <span className="stat-val">&lt; 2s</span>
+            <span className="stat-lbl">Instant Matchmaking</span>
           </div>
           <div className="landing-stat-divider" />
           <div className="landing-stat">
             <span className="stat-val">100%</span>
-            <span className="stat-lbl">Anonymous & Ephemeral</span>
+            <span className="stat-lbl">Anonymous & Private</span>
           </div>
           <div className="landing-stat-divider" />
           <div className="landing-stat">
-            <span className="stat-val">10,000+</span>
-            <span className="stat-lbl">Concurrent Capacity</span>
+            <span className="stat-val">Campus</span>
+            <span className="stat-lbl">Student Network</span>
           </div>
         </div>
       </section>
@@ -121,7 +123,7 @@ export default function LandingPage({ onLogin }: { onLogin: (user: any) => void 
             </div>
             <h3 className="landing-card-title">Random 1-on-1 Chat</h3>
             <p className="landing-card-desc">
-              Match instantly with real fellow students across departments. Built-in icebreakers, topic filters, real-time radar scanning, and optional anonymous pen-pal DMs.
+              Match instantly with real fellow students across departments. Built-in icebreakers, topic filters, live matching, and optional anonymous pen-pal DMs.
             </p>
           </div>
 
@@ -132,7 +134,7 @@ export default function LandingPage({ onLogin }: { onLogin: (user: any) => void 
             </div>
             <h3 className="landing-card-title">Anonymous Pulse Feed</h3>
             <p className="landing-card-desc">
-              Share confessions, campus hacks, exam questions, and memes without fear of judgment. Real-time upvoting and custom emoji reactions.
+              Share confessions, campus questions, exam tips, and moments with zero judgment. Real-time upvoting and community interactions.
             </p>
           </div>
 
@@ -154,7 +156,7 @@ export default function LandingPage({ onLogin }: { onLogin: (user: any) => void 
             </div>
             <h3 className="landing-card-title">Live Bulletin Board</h3>
             <p className="landing-card-desc">
-              Stay in the loop with TechFests, mid-semester exam schedules, open-mic nights, and hackathons with 1-tap RSVPs.
+              Stay in the loop with college fests, mid-semester exam schedules, open-mic nights, and hackathons with 1-tap RSVPs.
             </p>
           </div>
         </div>
@@ -163,11 +165,11 @@ export default function LandingPage({ onLogin }: { onLogin: (user: any) => void 
       {/* Security & Privacy Banner */}
       <section className="landing-security">
         <div className="landing-security-box">
-          <Shield size={28} className="landing-security-icon" />
+          <Lock size={28} className="landing-security-icon" />
           <div>
             <h4 style={{ fontSize: '1.05rem', fontWeight: 700, marginBottom: 4 }}>Student Privacy & Safety First</h4>
             <p style={{ fontSize: '0.84rem', color: 'var(--text-secondary)', margin: 0 }}>
-              All anonymous sessions never disclose your identity unless both sides explicitly consent. Powered by PostgreSQL Row Level Security.
+              All anonymous sessions never disclose your identity unless both sides explicitly consent. Powered by secure student data encryption.
             </p>
           </div>
         </div>
@@ -176,17 +178,17 @@ export default function LandingPage({ onLogin }: { onLogin: (user: any) => void 
       {/* Footer */}
       <footer className="landing-footer">
         <div>© 2026 CampusSparks. Built for Indian & Global University Students.</div>
-        <div style={{ display: 'flex', gap: 16 }}>
+        <div style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
           <button
             className="landing-footer-link"
-            style={{ fontWeight: 600, color: 'var(--accent)' }}
+            style={{ fontWeight: 600, color: 'var(--accent)', display: 'flex', alignItems: 'center', gap: 6 }}
             onClick={() => {
               onLogin({
                 id: 'admin_nilesh_gupta',
                 username: 'guptanilesh417',
                 email: 'guptanilesh417@gmail.com',
                 displayName: 'Nilesh Gupta',
-                avatar: '⚡',
+                avatar: '🎓',
                 major: 'Computer Science & Engineering',
                 graduationYear: 2026,
                 college: 'Campus Lead University',
@@ -195,7 +197,7 @@ export default function LandingPage({ onLogin }: { onLogin: (user: any) => void 
               });
             }}
           >
-            🛡️ Admin Portal (Nilesh Gupta)
+            <ShieldCheck size={16} /> Admin Portal (Nilesh Gupta)
           </button>
           <button className="landing-footer-link" onClick={() => openAuth('signin')}>Sign In</button>
         </div>

@@ -1,26 +1,30 @@
 // ============================================================
-// Random Student Chat — Supabase Realtime 1-on-1 Matchmaking
-// Symmetric Coordinator Pairing & WebSocket Room Sync
+// Random Student Chat — High-Capacity 1-on-1 Campus Matchmaking
+// Scalable Peer Coordination with Professional Icons & Aesthetics
 // ============================================================
 
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { Send, Sparkles, UserPlus, SkipForward, X, Zap, Shield, MessageSquareQuote, RotateCcw, Copy, Check, KeyRound, Radio } from 'lucide-react';
+import {
+  Send, Sparkles, UserPlus, SkipForward, X, Zap, Shield,
+  MessageSquareQuote, RotateCcw, Copy, Check, KeyRound, Radio,
+  User, CheckCircle2
+} from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { INTEREST_TAGS, ICEBREAKERS, CURRENT_USER, generateAnonName } from '../../data/mockData';
 import { supabase } from '../../lib/supabase';
 import type { ChatMessage, AnonMatch } from '../../types';
 
 const SEARCHING_TIPS = [
-  'Broadcasting live across campus dorms & departments...',
-  'Tip: Select interest tags above to match by common vibe.',
-  'Your identity stays 100% anonymous until both sides agree to reveal.',
-  'Realtime WebSocket connection active — waiting for peer...',
+  'Searching through active campus departments and study halls...',
+  'Select interest tags above to match with students of similar vibes.',
+  'Your identity stays 100% anonymous until both sides choose to reveal.',
+  'Matching you with an online campus student...',
 ];
 
 const QUICK_STARTERS = [
-  'What major are you?',
+  'What major are you in?',
   'Best food spot on campus?',
-  'Studying or procrastinating rn?',
+  'Studying or procrastinating right now?',
   'What music are you listening to?',
 ];
 
@@ -41,9 +45,10 @@ export default function RandomChat() {
   const roomChannelRef = useRef<any>(null);
   const heartbeatIntervalRef = useRef<any>(null);
   const isMatchingRef = useRef(false);
+  const claimedPeersRef = useRef<Set<string>>(new Set());
 
   const me = state.currentUser || CURRENT_USER;
-  // Guarantees every single device/tab has a 100% unique session ID
+  // Guarantees every single browser tab has a 100% unique session ID
   const mySessionId = useRef(`sess_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`).current;
   const myAnonProfile = useRef(generateAnonName()).current;
 
@@ -72,11 +77,11 @@ export default function RandomChat() {
   };
 
   // ── Dedicated Room Connection ─────────────────────────────────
-  const connectToRoom = useCallback((roomId: string, peerId: string, peerPseudonym: string, peerEmoji: string, interestTags: string[]) => {
+  const connectToRoom = useCallback((roomId: string, peerId: string, peerPseudonym: string, _peerEmoji: string, interestTags: string[]) => {
     if (isMatchingRef.current) return;
     isMatchingRef.current = true;
 
-    // Clear lobby heartbeat and channel
+    // Clear lobby heartbeat and channels
     if (heartbeatIntervalRef.current) {
       clearInterval(heartbeatIntervalRef.current);
       heartbeatIntervalRef.current = null;
@@ -94,14 +99,14 @@ export default function RandomChat() {
       id: roomId,
       peerId,
       peerPseudonym,
-      peerEmoji,
+      peerEmoji: '🎓',
       matchedAt: new Date().toISOString(),
       interestTags,
       messages: [
         {
           id: `sys_${Date.now()}`,
           senderId: 'system',
-          content: `🎉 You are connected live with ${peerPseudonym}! Everything is anonymous & private. Say hi! ✨`,
+          content: `You are connected with ${peerPseudonym}! Your chat is private and encrypted. Say hello!`,
           timestamp: new Date().toISOString(),
           type: 'system',
         },
@@ -113,7 +118,7 @@ export default function RandomChat() {
 
     dispatch({ type: 'MATCH_FOUND', payload: matchData });
 
-    // Join dedicated room WebSocket
+    // Join dedicated room channel
     const room = supabase.channel(`campus_live_room_${roomId}`, {
       config: { broadcast: { ack: true } },
     });
@@ -141,7 +146,7 @@ export default function RandomChat() {
           const sysMsg: ChatMessage = {
             id: `left_${Date.now()}`,
             senderId: 'system',
-            content: `👋 ${peerPseudonym} left the chat session.`,
+            content: `${peerPseudonym} left the chat session.`,
             timestamp: new Date().toISOString(),
             type: 'system',
           };
@@ -151,21 +156,22 @@ export default function RandomChat() {
       .subscribe();
   }, [mySessionId, dispatch]);
 
-  // ── Matchmaking Engine ────────────────────────────────────────
+  // ── High-Concurrency Matchmaking Engine ───────────────────────
   const handleStartMatch = useCallback((specificRoomCode?: string) => {
     isMatchingRef.current = false;
     setPeerRevealRequested(false);
+    claimedPeersRef.current.clear();
     dispatch({ type: 'START_MATCHING' });
 
     // 1. Direct Room Code Match (Friend Code)
     if (specificRoomCode && specificRoomCode.trim()) {
       const cleanCode = specificRoomCode.trim().toUpperCase();
       const roomId = `friend_room_${cleanCode}`;
-      connectToRoom(roomId, `peer_${cleanCode}`, 'Campus Friend 🤝', '⚡', selectedInterests);
+      connectToRoom(roomId, `peer_${cleanCode}`, 'Campus Friend', '🎓', selectedInterests);
       return;
     }
 
-    // 2. Automatic Matchmaking Lobby
+    // 2. High-Capacity Automatic Matchmaking Lobby
     if (heartbeatIntervalRef.current) {
       clearInterval(heartbeatIntervalRef.current);
       heartbeatIntervalRef.current = null;
@@ -175,7 +181,7 @@ export default function RandomChat() {
       lobbyChannelRef.current = null;
     }
 
-    const lobby = supabase.channel('campus_roulette_lobby_v4', {
+    const lobby = supabase.channel('campus_roulette_lobby_v5', {
       config: {
         broadcast: { ack: true },
         presence: { key: mySessionId },
@@ -184,16 +190,17 @@ export default function RandomChat() {
 
     lobbyChannelRef.current = lobby;
 
-    // Active Pulse Heartbeat Listener with Symmetric Coordinator Self-Connection
+    // Pulse listener with atomic pair claiming for 50+ users
     lobby
       .on('broadcast', { event: 'SEARCH_PULSE' }, async ({ payload }) => {
         if (isMatchingRef.current) return;
-        if (payload.sessionId !== mySessionId) {
-          // Coordinator rule: if my session ID is smaller, coordinate the match
+        if (payload.sessionId !== mySessionId && !claimedPeersRef.current.has(payload.sessionId)) {
+          // Deterministic coordinator: lowest session ID initiates pairing
           if (mySessionId < payload.sessionId) {
+            claimedPeersRef.current.add(payload.sessionId);
             const roomId = `auto_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
             
-            // Broadcast to peer
+            // Broadcast targeted pairing payload
             await lobby.send({
               type: 'broadcast',
               event: 'MATCH_PAIRED',
@@ -202,30 +209,30 @@ export default function RandomChat() {
                 sessionB: payload.sessionId,
                 roomId,
                 userAPseudonym: myAnonProfile.name,
-                userAEmoji: myAnonProfile.emoji,
+                userAEmoji: '🎓',
                 userBPseudonym: payload.pseudonym,
-                userBEmoji: payload.emoji,
+                userBEmoji: '🎓',
                 interests: selectedInterests,
               },
             });
 
-            // Coordinator IMMEDIATELY self-connects!
-            connectToRoom(roomId, payload.sessionId, payload.pseudonym, payload.emoji, selectedInterests);
+            // Coordinator immediately connects for itself
+            connectToRoom(roomId, payload.sessionId, payload.pseudonym, '🎓', selectedInterests);
           }
         }
       })
-      // Pair Found Event Listener for Non-Coordinator Peer
+      // Pair Found Event Listener
       .on('broadcast', { event: 'MATCH_PAIRED' }, ({ payload }) => {
         if (isMatchingRef.current) return;
         if (payload.sessionB === mySessionId) {
-          connectToRoom(payload.roomId, payload.sessionA, payload.userAPseudonym, payload.userAEmoji, payload.interests || []);
+          connectToRoom(payload.roomId, payload.sessionA, payload.userAPseudonym, '🎓', payload.interests || []);
         } else if (payload.sessionA === mySessionId) {
-          connectToRoom(payload.roomId, payload.sessionB, payload.userBPseudonym, payload.userBEmoji, payload.interests || []);
+          connectToRoom(payload.roomId, payload.sessionB, payload.userBPseudonym, '🎓', payload.interests || []);
         }
       })
       .subscribe(async status => {
         if (status === 'SUBSCRIBED') {
-          // Immediate pulse broadcast
+          // Immediate broadcast pulse
           await lobby.send({
             type: 'broadcast',
             event: 'SEARCH_PULSE',
@@ -233,12 +240,11 @@ export default function RandomChat() {
               sessionId: mySessionId,
               userId: me.id,
               pseudonym: myAnonProfile.name,
-              emoji: myAnonProfile.emoji,
               interests: selectedInterests,
             },
           });
 
-          // Heartbeat every 1 second
+          // Heartbeat pulse every 1s
           heartbeatIntervalRef.current = setInterval(async () => {
             if (isMatchingRef.current) return;
             await lobby.send({
@@ -248,7 +254,6 @@ export default function RandomChat() {
                 sessionId: mySessionId,
                 userId: me.id,
                 pseudonym: myAnonProfile.name,
-                emoji: myAnonProfile.emoji,
                 interests: selectedInterests,
               },
             });
@@ -324,7 +329,7 @@ export default function RandomChat() {
           profile: {
             id: me.id,
             displayName: me.displayName,
-            avatar: me.avatar,
+            avatar: '🎓',
             major: me.major,
             username: me.username,
           },
@@ -392,12 +397,12 @@ export default function RandomChat() {
     const isSearching = activeMatch?.status === 'searching';
 
     return (
-      <div className="app-content" style={{ maxWidth: 720 }}>
+      <div className="app-content" style={{ maxWidth: 720, margin: '0 auto', padding: '16px 12px' }}>
         <div className="match-container">
           {/* Status Header Badge */}
           <div className="match-badge-pill">
             <span className="dot" />
-            <span>{isSearching ? 'Live WebSocket Matchmaking Active' : '100% Anonymous & Ephemeral'}</span>
+            <span>{isSearching ? 'Live Matchmaking Active' : '100% Anonymous & Private'}</span>
           </div>
 
           {/* Radar Animation Area */}
@@ -414,11 +419,11 @@ export default function RandomChat() {
                 <div className="radar-dot" style={{ top: '42%', left: '76%', animationDelay: '0.7s' }} />
               </>
             )}
-            <div className="radar-center">
+            <div className="radar-center" style={{ background: 'var(--accent-bg-strong)', color: 'var(--accent)' }}>
               {isSearching ? (
-                <span className="radar-icon-spin">⚡</span>
+                <Zap size={28} className="radar-icon-spin" />
               ) : (
-                <span>💬</span>
+                <Sparkles size={28} />
               )}
             </div>
           </div>
@@ -432,9 +437,9 @@ export default function RandomChat() {
               : 'Chat 1-on-1 anonymously in real-time with fellow students across campus. Zero personal data shared unless you both agree to reveal.'}
           </p>
 
-          {/* Live Mode Toggle (Auto Match vs Friend Code) */}
+          {/* Mode Switcher */}
           {!isSearching && (
-            <div style={{ display: 'flex', gap: 8, marginBottom: 18, background: 'var(--bg-tertiary)', padding: 4, borderRadius: 'var(--radius-pill)', border: '1px solid var(--border-light)' }}>
+            <div style={{ display: 'flex', gap: 8, marginBottom: 20, background: 'var(--bg-tertiary)', padding: 4, borderRadius: 'var(--radius-pill)', border: '1px solid var(--border-light)', maxWidth: 360, width: '100%' }}>
               <button
                 className={`btn btn-sm btn-pill ${activeTabMode === 'auto' ? 'btn-primary' : 'btn-ghost'}`}
                 onClick={() => setActiveTabMode('auto')}
@@ -479,14 +484,14 @@ export default function RandomChat() {
                 ))}
               </div>
 
-              <div className="match-actions-row">
+              <div className="match-actions-row" style={{ marginTop: 16 }}>
                 <button className="btn btn-primary btn-lg btn-pill" onClick={() => handleStartMatch()}>
                   <Sparkles size={18} />
                   Start Random Chat
                 </button>
               </div>
 
-              <div className="match-safety-note">
+              <div className="match-safety-note" style={{ marginTop: 14 }}>
                 <Shield size={14} />
                 <span>Encrypted live session. Be respectful to fellow students.</span>
               </div>
@@ -496,20 +501,20 @@ export default function RandomChat() {
           {/* Friend Code Mode */}
           {!isSearching && activeTabMode === 'code' && (
             <div className="match-filter-box" style={{ textAlign: 'center' }}>
-              <div style={{ fontSize: '0.9rem', fontWeight: 600, color: 'var(--text-primary)', marginBottom: 6 }}>
+              <div style={{ fontSize: '0.92rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: 6 }}>
                 Connect Instantly with a Friend
               </div>
-              <p style={{ fontSize: '0.8rem', color: 'var(--text-tertiary)', marginBottom: 14 }}>
+              <p style={{ fontSize: '0.8rem', color: 'var(--text-tertiary)', marginBottom: 16 }}>
                 Enter the exact same 4-digit code on both devices (e.g. <strong>7777</strong> or <strong>CAMPUS</strong>) to connect directly in 0.1s!
               </p>
 
-              <div style={{ display: 'flex', gap: 8, maxWidth: 360, margin: '0 auto 16px' }}>
+              <div style={{ display: 'flex', gap: 8, maxWidth: 360, margin: '0 auto 16px', width: '100%' }}>
                 <input
                   type="text"
                   placeholder="Enter code (e.g. 7777)"
                   value={customRoomCode}
                   onChange={e => setCustomRoomCode(e.target.value.toUpperCase())}
-                  style={{ flex: 1, padding: '10px 14px', textAlign: 'center', fontSize: '1rem', fontWeight: 700, letterSpacing: 2, textTransform: 'uppercase' }}
+                  style={{ flex: 1, padding: '10px 14px', textAlign: 'center', fontSize: '1rem', fontWeight: 700, letterSpacing: 2, textTransform: 'uppercase', borderRadius: 'var(--radius-md)' }}
                   onKeyDown={e => e.key === 'Enter' && customRoomCode.trim() && handleStartMatch(customRoomCode)}
                 />
                 <button
@@ -517,11 +522,11 @@ export default function RandomChat() {
                   onClick={() => customRoomCode.trim() && handleStartMatch(customRoomCode)}
                   disabled={!customRoomCode.trim()}
                 >
-                  Connect 🚀
+                  Connect
                 </button>
               </div>
 
-              <div style={{ display: 'flex', justifyContent: 'center', gap: 8 }}>
+              <div style={{ display: 'flex', justifyContent: 'center', gap: 8, flexWrap: 'wrap' }}>
                 {['7777', '9999', 'ROOM1', 'HOSTEL'].map(preset => (
                   <button
                     key={preset}
@@ -538,19 +543,19 @@ export default function RandomChat() {
             </div>
           )}
 
-          {/* Searching State */}
+          {/* Searching State Controls */}
           {isSearching && (
-            <div className="match-searching-controls" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14 }}>
-              <div style={{ display: 'flex', gap: 10 }}>
+            <div className="match-searching-controls" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14, marginTop: 12 }}>
+              <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', justifyContent: 'center' }}>
                 <button className="btn btn-secondary btn-pill" onClick={handleCancelSearch}>
                   <RotateCcw size={16} /> Cancel
                 </button>
                 <button className="btn btn-primary btn-pill" onClick={handleCopyInviteLink}>
-                  {copiedLink ? <><Check size={16} /> Link Copied!</> : <><Copy size={16} /> Invite Friend</>}
+                  {copiedLink ? <><Check size={16} /> Link Copied!</> : <><Copy size={16} /> Invite Classmate</>}
                 </button>
               </div>
               <p style={{ fontSize: '0.78rem', color: 'var(--text-tertiary)', margin: 0 }}>
-                💡 Share the link with your friend — when both click "Start Random Chat", you connect instantly!
+                Share the link with a classmate — when both click "Start Random Chat", you connect instantly!
               </p>
             </div>
           )}
@@ -562,16 +567,16 @@ export default function RandomChat() {
   // ── Revealed State ──────────────────────────────────────
   if (activeMatch.status === 'revealed') {
     return (
-      <div className="app-content" style={{ maxWidth: 600 }}>
+      <div className="app-content" style={{ maxWidth: 600, margin: '0 auto', padding: '16px 12px' }}>
         <div className="match-container" style={{ minHeight: '55vh' }}>
-          <div className="revealed-hero-avatar">
-            <span className="revealed-emoji">🤝</span>
+          <div className="revealed-hero-avatar" style={{ background: 'var(--accent-bg-strong)', color: 'var(--accent)' }}>
+            <CheckCircle2 size={42} />
           </div>
-          <h2 className="match-title">You're now connected!</h2>
+          <h2 className="match-title">You are now connected!</h2>
           <p className="match-subtitle">
             <strong>{activeMatch.peerPseudonym}</strong> and you have exchanged identities. You can now chat anytime directly in your messages.
           </p>
-          <div style={{ display: 'flex', gap: 12, marginTop: 20 }}>
+          <div style={{ display: 'flex', gap: 12, marginTop: 20, flexWrap: 'wrap', justifyContent: 'center' }}>
             <button
               className="btn btn-primary btn-pill"
               onClick={() => {
@@ -579,7 +584,7 @@ export default function RandomChat() {
                 dispatch({ type: 'SET_TAB', payload: 'messages' });
               }}
             >
-              💬 Open Direct Messages
+              Open Direct Messages
             </button>
             <button
               className="btn btn-secondary btn-pill"
@@ -588,7 +593,7 @@ export default function RandomChat() {
                 handleStartMatch();
               }}
             >
-              ⚡ Next Random Chat
+              Next Random Chat
             </button>
           </div>
         </div>
@@ -598,20 +603,20 @@ export default function RandomChat() {
 
   // ── Chatting State ──────────────────────────────────────
   return (
-    <div className="app-content" style={{ maxWidth: 680 }}>
+    <div className="app-content" style={{ maxWidth: 680, margin: '0 auto', padding: '12px 8px' }}>
       <div className="chat-room">
         {/* Chat Header */}
         <div className="chat-header">
           <div className="chat-header-info">
-            <div className="user-avatar" style={{ background: 'var(--accent-bg-strong)', width: 40, height: 40, fontSize: '1.2rem' }}>
-              {activeMatch.peerEmoji}
+            <div className="user-avatar" style={{ background: 'var(--accent-bg-strong)', color: 'var(--accent)', width: 40, height: 40, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <User size={20} />
             </div>
             <div>
               <div className="chat-pseudonym">
                 {activeMatch.peerPseudonym}
-                <span className="chat-anon-tag">🟢 Live Peer</span>
+                <span className="chat-anon-tag">Online Peer</span>
               </div>
-              <div className="chat-pseudonym-sub">● Realtime WebSocket Connected</div>
+              <div className="chat-pseudonym-sub">● Connected Live & Private</div>
             </div>
           </div>
           <div className="chat-actions">
@@ -622,7 +627,7 @@ export default function RandomChat() {
               style={{ opacity: activeMatch.revealRequestSent ? 0.7 : 1 }}
             >
               <UserPlus size={14} />
-              {activeMatch.revealRequestSent ? 'Request Sent' : 'Reveal Identity'}
+              <span className="hide-mobile">{activeMatch.revealRequestSent ? 'Request Sent' : 'Reveal Identity'}</span>
             </button>
             <button
               className="icon-btn"
@@ -671,7 +676,7 @@ export default function RandomChat() {
             gap: 10,
           }}>
             <div style={{ fontSize: '0.82rem', color: 'var(--text-primary)' }}>
-              ✨ <strong>{activeMatch.peerPseudonym}</strong> wants to reveal profiles!
+              <strong>{activeMatch.peerPseudonym}</strong> requested to reveal profiles!
             </div>
             <button className="btn btn-sm btn-primary btn-pill" onClick={handleAcceptPeerReveal}>
               Accept & Reveal
@@ -751,14 +756,14 @@ export default function RandomChat() {
             <div className="reveal-modal-content">
               <div className="reveal-avatar-wrapper">
                 <div className="reveal-avatar-ring" />
-                <div className="reveal-avatar">
-                  {activeMatch.peerEmoji}
+                <div className="reveal-avatar" style={{ background: 'var(--accent-bg-strong)', color: 'var(--accent)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <User size={28} />
                 </div>
               </div>
 
               <div className="reveal-title">Stay Connected?</div>
               <div className="reveal-subtitle">
-                Choose how you'd like to stay in touch with <strong>{activeMatch.peerPseudonym}</strong>:
+                Choose how you would like to stay in touch with <strong>{activeMatch.peerPseudonym}</strong>:
               </div>
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: 10, width: '100%', marginTop: 14 }}>
@@ -770,10 +775,10 @@ export default function RandomChat() {
                     dispatch({ type: 'CONNECT_ANONYMOUSLY' });
                   }}
                 >
-                  <span>🎭</span>
+                  <Shield size={16} />
                   <div style={{ textAlign: 'left' }}>
                     <div style={{ fontSize: '0.85rem', fontWeight: 700 }}>Chat Anonymously in DMs</div>
-                    <div style={{ fontSize: '0.68rem', color: 'var(--text-tertiary)' }}>Keep identities 100% private. Chat as {activeMatch.peerPseudonym}</div>
+                    <div style={{ fontSize: '0.68rem', color: 'var(--text-tertiary)' }}>Keep identities private. Chat as {activeMatch.peerPseudonym}</div>
                   </div>
                 </button>
 
