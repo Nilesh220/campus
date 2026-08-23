@@ -12,7 +12,6 @@ import type {
 } from '../types';
 import {
   CURRENT_USER, USERS, generateAnonName,
-  INITIAL_POLLS, INITIAL_CONFESSIONS,
 } from '../data/mockData';
 import { SupabaseService } from '../services/supabaseService';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
@@ -76,10 +75,24 @@ try {
 }
 
 const savedPolls = typeof window !== 'undefined' ? localStorage.getItem('campussparks_polls') : null;
-const initialPollsData: Poll[] = savedPolls ? JSON.parse(savedPolls) : INITIAL_POLLS;
+let initialPollsData: Poll[] = [];
+try {
+  if (savedPolls) {
+    initialPollsData = (JSON.parse(savedPolls) as Poll[]).filter(p => !p.id.startsWith('poll_1') && !p.id.startsWith('poll_2') && !p.id.startsWith('poll_3'));
+  }
+} catch {
+  initialPollsData = [];
+}
 
 const savedConfessions = typeof window !== 'undefined' ? localStorage.getItem('campussparks_confessions') : null;
-const initialConfessionsData: Confession[] = savedConfessions ? JSON.parse(savedConfessions) : INITIAL_CONFESSIONS;
+let initialConfessionsData: Confession[] = [];
+try {
+  if (savedConfessions) {
+    initialConfessionsData = (JSON.parse(savedConfessions) as Confession[]).filter(c => !c.id.startsWith('conf_1') && !c.id.startsWith('conf_2') && !c.id.startsWith('conf_3') && !c.id.startsWith('conf_4'));
+  }
+} catch {
+  initialConfessionsData = [];
+}
 
 const initialState: AppState = {
   currentUser: parsedUser,

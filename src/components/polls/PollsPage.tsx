@@ -170,18 +170,20 @@ export default function PollsPage() {
         })}
 
         {filteredPolls.length === 0 && (
-          <div className="feed-empty-state" style={{ gridColumn: '1 / -1' }}>
-            <div className="feed-empty-icon">
-              <Vote size={32} />
+          <div className="feed-empty-state" style={{ gridColumn: '1 / -1', padding: '48px 24px', textAlign: 'center', background: 'var(--bg-secondary)', borderRadius: 'var(--radius-xl)', border: '1px dashed var(--border-medium)' }}>
+            <div style={{ width: 64, height: 64, borderRadius: 20, background: 'var(--accent-bg-strong)', color: 'var(--accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px', fontSize: '2rem' }}>
+              🗳️
             </div>
-            <h3>No Polls Found</h3>
-            <p>Be the first student to create a campus hot take poll!</p>
+            <h3 style={{ fontSize: '1.2rem', fontWeight: 800, margin: '0 0 6px' }}>No Active Campus Polls Right Now</h3>
+            <p style={{ fontSize: '0.88rem', color: 'var(--text-secondary)', maxWidth: 440, margin: '0 auto 20px', lineHeight: 1.5 }}>
+              Be the first to launch a campus debate, canteen food ranking, or hot take for fellow students to vote on!
+            </p>
             <button
               className="btn btn-primary btn-pill"
-              style={{ marginTop: 12 }}
+              style={{ padding: '10px 24px', fontSize: '0.92rem', fontWeight: 700 }}
               onClick={() => setShowCreateModal(true)}
             >
-              <Plus size={16} /> Create First Poll
+              <Plus size={18} /> Create First Campus Poll 🚀
             </button>
           </div>
         )}

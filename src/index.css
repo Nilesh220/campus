@@ -278,26 +278,27 @@ input, textarea, select { font-family: var(--font-primary); color: var(--text-pr
 }
 
 .sidebar-label {
-  font-size: 0.76rem;
+  font-size: 0.72rem;
   font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 1.2px;
+  letter-spacing: 1.1px;
   color: var(--text-tertiary);
-  padding: var(--space-2xl) var(--space-lg) var(--space-xs);
+  padding: 18px 12px 6px;
 }
 
 .sidebar-item {
   display: flex;
   align-items: center;
-  gap: 14px;
-  padding: 13px 18px;
+  gap: 11px;
+  padding: 9px 12px;
   border-radius: var(--radius-md);
   color: var(--text-secondary);
-  font-size: 1.02rem;
+  font-size: 0.9rem;
   font-weight: 600;
   transition: all var(--transition-fast);
   position: relative;
-  min-height: 48px;
+  min-height: 38px;
+  white-space: nowrap;
 }
 
 .sidebar-item:hover {
@@ -317,13 +318,13 @@ input, textarea, select { font-family: var(--font-primary); color: var(--text-pr
   left: 0;
   top: 50%;
   transform: translateY(-50%);
-  width: 4px;
+  width: 3.5px;
   height: 55%;
   border-radius: var(--radius-pill);
   background: var(--accent);
 }
 
-.sidebar-item svg { width: 22px; height: 22px; flex-shrink: 0; opacity: 0.85; }
+.sidebar-item svg { width: 19px; height: 19px; flex-shrink: 0; opacity: 0.85; }
 .sidebar-item:hover svg,
 .sidebar-item.active svg { opacity: 1; }
 

@@ -211,18 +211,20 @@ export default function ConfessionsPage() {
         ))}
 
         {confessions.length === 0 && (
-          <div className="feed-empty-state" style={{ gridColumn: '1 / -1' }}>
-            <div className="feed-empty-icon">
-              <Ghost size={32} />
+          <div className="feed-empty-state" style={{ gridColumn: '1 / -1', padding: '48px 24px', textAlign: 'center', background: 'var(--bg-secondary)', borderRadius: 'var(--radius-xl)', border: '1px dashed var(--border-medium)' }}>
+            <div style={{ width: 64, height: 64, borderRadius: 20, background: 'rgba(139, 92, 246, 0.14)', color: '#8B5CF6', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px', fontSize: '2rem' }}>
+              🤫
             </div>
-            <h3>No Confessions in this Category</h3>
-            <p>Be the first student to drop an anonymous confession!</p>
+            <h3 style={{ fontSize: '1.2rem', fontWeight: 800, margin: '0 0 6px' }}>The Confessions Wall is Fresh & Clean</h3>
+            <p style={{ fontSize: '0.88rem', color: 'var(--text-secondary)', maxWidth: 440, margin: '0 auto 20px', lineHeight: 1.5 }}>
+              Spill the tea, hostel secrets, library crushes, or exam panic completely anonymously. Your identity is 100% untraceable.
+            </p>
             <button
               className="btn btn-primary btn-pill"
-              style={{ marginTop: 12 }}
+              style={{ padding: '10px 24px', fontSize: '0.92rem', fontWeight: 700 }}
               onClick={() => setShowCreateModal(true)}
             >
-              <Plus size={16} /> Post First Secret
+              <Plus size={18} /> Drop First Anonymous Confession 🤫
             </button>
           </div>
         )}

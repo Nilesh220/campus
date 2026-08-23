@@ -1,8 +1,10 @@
 {
+  "id": "/",
   "name": "CampusSparks",
   "short_name": "CampusSparks",
   "description": "The 100% Student-Only Campus Network. Live anonymous matching, campus confessions, club hubs, and official bulletin boards.",
   "start_url": "/",
+  "scope": "/",
   "display": "standalone",
   "orientation": "portrait",
   "theme_color": "#5BB5A2",
@@ -21,5 +23,36 @@
       "type": "image/png",
       "purpose": "any maskable"
     }
+  ],
+  "shortcuts": [
+    {
+      "name": "Random Chat",
+      "short_name": "Chat",
+      "description": "Start an anonymous 1-on-1 random campus chat",
+      "url": "/#match",
+      "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Confessions Wall",
+      "short_name": "Confessions",
+      "description": "Read & share anonymous secrets",
+      "url": "/#confessions",
+      "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Polls & Hot Takes",
+      "short_name": "Polls",
+      "description": "Vote on daily campus debates",
+      "url": "/#polls",
+      "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Direct Messages",
+      "short_name": "Messages",
+      "description": "Open your private campus messages",
+      "url": "/#messages",
+      "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }]
+    }
   ]
 }
+

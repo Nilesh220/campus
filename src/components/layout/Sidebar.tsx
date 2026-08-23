@@ -97,7 +97,7 @@ export default function Sidebar() {
               }}
             >
               {item.icon}
-              <span style={{ flex: 1 }}>{item.label}</span>
+              <span style={{ flex: 1, textAlign: 'left', overflow: 'hidden', textOverflow: 'ellipsis' }}>{item.label}</span>
               {item.badge && (
                 <span className="sidebar-nav-chip">{item.badge}</span>
               )}
@@ -114,8 +114,8 @@ export default function Sidebar() {
               onClick={() => notificationService.requestPermission()}
               style={{ color: 'var(--accent)', fontWeight: 600 }}
             >
-              <Bell size={19} />
-              Enable Push Alerts
+              <Bell size={19} style={{ flexShrink: 0 }} />
+              <span style={{ flex: 1, textAlign: 'left' }}>Enable Push Alerts</span>
             </button>
           )}
 
@@ -125,15 +125,20 @@ export default function Sidebar() {
               className="sidebar-item pwa-install-sidebar-btn"
               onClick={handleInstallClick}
               style={{
-                marginTop: 6,
+                marginTop: 8,
                 background: 'var(--accent-bg-strong)',
                 color: 'var(--accent)',
                 fontWeight: 700,
                 border: '1px dashed var(--accent)',
+                borderRadius: 'var(--radius-md)',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 10,
               }}
             >
-              <Sparkles size={18} />
-              Install App
+              <Sparkles size={18} style={{ flexShrink: 0 }} />
+              <span style={{ flex: 1, textAlign: 'left' }}>Install App</span>
+              <span className="sidebar-nav-chip" style={{ background: 'var(--accent)', color: 'white', fontSize: '0.65rem' }}>PWA</span>
             </button>
           )}
 
