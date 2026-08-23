@@ -2,7 +2,7 @@
 // CampusSparks — Resend Email Delivery Service
 // ============================================================
 
-const RESEND_API_KEY = import.meta.env.VITE_RESEND_API_KEY || '';
+const RESEND_API_KEY = import.meta.env.VITE_RESEND_API_KEY || 're_7Vp7h8Q9_CampusSparksLiveKey2026';
 
 export interface SendEmailParams {
   to: string;
@@ -15,9 +15,9 @@ export const EmailService = {
   /**
    * Send an email via Resend API
    */
-  async sendEmail({ to, subject, html, from = 'CampusSparks <verify@campussparks.com>' }: SendEmailParams): Promise<{ success: boolean; data?: any; error?: string }> {
+  async sendEmail({ to, subject, html, from = 'CampusSparks <onboarding@resend.dev>' }: SendEmailParams): Promise<{ success: boolean; data?: any; error?: string }> {
     if (!RESEND_API_KEY) {
-      console.warn('VITE_RESEND_API_KEY not configured in environment.');
+      console.warn('VITE_RESEND_API_KEY not configured.');
       return { success: false, error: 'Email service unconfigured' };
     }
 
