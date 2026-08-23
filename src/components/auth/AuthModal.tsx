@@ -1,9 +1,13 @@
 // ============================================================
-// Auth Modal — Sign In & Student Registration (Gen-Z Enhanced)
+// Auth Modal — Sign In & Student Registration with Email Validation
+// Real Supabase Email Confirmation & Verification Flow
 // ============================================================
 
 import { useState } from 'react';
-import { Sparkles, ArrowRight, ShieldCheck, Mail, Lock, User, X, AtSign, Dices } from 'lucide-react';
+import {
+  Sparkles, ArrowRight, Mail, Lock, User, X,
+  AtSign, Dices, MailCheck, RotateCcw, AlertCircle, Check, ShieldCheck
+} from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { CURRENT_USER, generateGenZUsername } from '../../data/mockData';
 
@@ -15,6 +19,8 @@ const MAJORS = [
   'Civil Eng.', 'Biotechnology', 'Psychology', 'Economics'
 ];
 
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
 interface AuthModalProps {
   initialMode?: 'signin' | 'signup';
   onClose: () => void;
@@ -23,6 +29,11 @@ interface AuthModalProps {
 
 export default function AuthModal({ initialMode = 'signup', onClose, onSuccess }: AuthModalProps) {
   const [mode, setMode] = useState<'signin' | 'signup'>(initialMode);
+  const [view, setView] = useState<'form' | 'verify-email'>('form');
+  const [pendingVerificationEmail, setPendingVerificationEmail] = useState('');
+  const [resendCooldown, setResendCooldown] = useState(0);
+  const [resendSuccess, setResendSuccess] = useState(false);
+
   const [emailOrUsername, setEmailOrUsername] = useState('');
   const [username, setUsername] = useState(() => generateGenZUsername());
   const [email, setEmail] = useState('');
@@ -33,18 +44,64 @@ export default function AuthModal({ initialMode = 'signup', onClose, onSuccess }
   const [avatar, setAvatar] = useState('🎓');
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [unconfirmedEmail, setUnconfirmedEmail] = useState<string | null>(null);
 
   const handleShuffleUsername = () => {
     setUsername(generateGenZUsername(displayName));
+  };
+
+  const handleResendVerification = async (targetEmail: string) => {
+    if (resendCooldown > 0 || !targetEmail) return;
+    try {
+      const { error } = await supabase.auth.resend({
+        type: 'signup',
+        email: targetEmail,
+        options: {
+          emailRedirectTo: window.location.origin,
+        },
+      });
+      if (error) {
+        setErrorMsg(error.message);
+      } else {
+        setResendSuccess(true);
+        setResendCooldown(45);
+        const timer = setInterval(() => {
+          setResendCooldown(prev => {
+            if (prev <= 1) {
+              clearInterval(timer);
+              return 0;
+            }
+            return prev - 1;
+          });
+        }, 1000);
+      }
+    } catch (err: any) {
+      setErrorMsg(err.message || 'Failed to resend confirmation email.');
+    }
   };
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setErrorMsg(null);
+    setUnconfirmedEmail(null);
 
     const inputVal = (mode === 'signup' ? email : emailOrUsername).trim().toLowerCase();
     const cleanUsername = (username.trim() || generateGenZUsername(displayName)).replace(/^@/, '').toLowerCase();
+
+    // 1. Strict Email Format Validation
+    if (mode === 'signup') {
+      if (!EMAIL_REGEX.test(inputVal)) {
+        setErrorMsg('Please enter a valid email address with a domain (e.g. name@campus.edu or name@gmail.com)');
+        setLoading(false);
+        return;
+      }
+      if (password.length < 6) {
+        setErrorMsg('Password must be at least 6 characters long.');
+        setLoading(false);
+        return;
+      }
+    }
 
     const isNilesh = inputVal.includes('guptanilesh417') ||
                      cleanUsername.includes('guptanilesh417') ||
@@ -63,6 +120,7 @@ export default function AuthModal({ initialMode = 'signup', onClose, onSuccess }
           email: resolvedEmail,
           password,
           options: {
+            emailRedirectTo: window.location.origin,
             data: {
               display_name: displayName.trim() || finalUsername,
               username: finalUsername,
@@ -74,48 +132,53 @@ export default function AuthModal({ initialMode = 'signup', onClose, onSuccess }
         });
 
         if (error) {
-          console.warn('Supabase auth signup notice:', error.message);
-          onSuccess({
-            id: `u_${Date.now()}`,
-            username: finalUsername,
-            email: resolvedEmail,
-            displayName: displayName.trim() || finalUsername,
-            major,
-            graduationYear: parseInt(gradYear),
-            avatar,
-            college: 'Campus University',
-            pulseScore: 100,
-            isAdmin: isNilesh,
-          });
+          if (error.message.toLowerCase().includes('already registered')) {
+            setErrorMsg('This email is already registered. Please switch to Sign In.');
+          } else {
+            setErrorMsg(error.message);
+          }
         } else if (data.user) {
-          onSuccess({
-            id: data.user.id,
-            username: finalUsername,
-            email: data.user.email,
-            displayName: displayName.trim() || finalUsername,
-            major,
-            graduationYear: parseInt(gradYear),
-            avatar,
-            college: 'Campus University',
-            pulseScore: 100,
-            isAdmin: isNilesh,
-          });
+          // If email confirmation is required (no active session returned immediately)
+          if (!data.session) {
+            setPendingVerificationEmail(resolvedEmail);
+            setView('verify-email');
+          } else {
+            // Direct login if email confirmation is disabled on Supabase
+            onSuccess({
+              id: data.user.id,
+              username: finalUsername,
+              email: data.user.email,
+              displayName: displayName.trim() || finalUsername,
+              avatar,
+              major,
+              graduationYear: parseInt(gradYear),
+              college: 'Campus University',
+              bio: 'Campus student ready to explore',
+              hobbies: ['Campus Life', 'Study'],
+              badges: [],
+              isOnline: true,
+              joinedAt: new Date().toISOString(),
+              pulseScore: 100,
+              isAdmin: isNilesh,
+            });
+          }
         }
       } else {
+        // Sign In
         const { data, error } = await supabase.auth.signInWithPassword({
           email: resolvedEmail,
           password,
         });
 
         if (error) {
-          console.warn('Supabase auth signin notice:', error.message);
-          onSuccess({
-            ...CURRENT_USER,
-            username: finalUsername,
-            email: resolvedEmail,
-            displayName: displayName.trim() || finalUsername || 'Campus Student',
-            isAdmin: isNilesh,
-          });
+          if (error.message.toLowerCase().includes('email not confirmed')) {
+            setErrorMsg('Your email address has not been verified yet. Please check your inbox for the confirmation link.');
+            setUnconfirmedEmail(resolvedEmail);
+          } else if (error.message.toLowerCase().includes('invalid login credentials')) {
+            setErrorMsg('Invalid email or password. Please check and try again.');
+          } else {
+            setErrorMsg(error.message);
+          }
         } else if (data.user) {
           onSuccess({
             id: data.user.id,
@@ -126,14 +189,18 @@ export default function AuthModal({ initialMode = 'signup', onClose, onSuccess }
             major: data.user.user_metadata?.major || CURRENT_USER.major,
             graduationYear: data.user.user_metadata?.graduation_year || 2027,
             college: 'Campus University',
+            bio: data.user.user_metadata?.bio || 'Campus student',
+            hobbies: data.user.user_metadata?.hobbies || ['Campus Life'],
+            badges: [],
+            isOnline: true,
+            joinedAt: data.user.created_at || new Date().toISOString(),
             pulseScore: 150,
             isAdmin: isNilesh,
           });
         }
       }
     } catch (err: any) {
-      console.warn('Auth fallback:', err);
-      onSuccess({ ...CURRENT_USER, isAdmin: isNilesh });
+      setErrorMsg(err.message || 'Authentication failed. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -149,27 +216,87 @@ export default function AuthModal({ initialMode = 'signup', onClose, onSuccess }
       major: 'Computer Science',
       graduationYear: 2027,
       college: 'Campus University',
+      bio: 'Exploring campus demo',
+      hobbies: ['Coding', 'Campus Life'],
+      badges: [],
+      isOnline: true,
+      joinedAt: new Date().toISOString(),
       pulseScore: 100,
       isAdmin: false,
     });
   };
 
+  // ── Verification Email Sent Screen ────────────────────────────
+  if (view === 'verify-email') {
+    return (
+      <div className="modal-overlay" onClick={onClose}>
+        <div className="modal auth-card" style={{ maxWidth: 440, textAlign: 'center', padding: 28 }} onClick={e => e.stopPropagation()}>
+          <div style={{ width: 64, height: 64, borderRadius: '50%', background: 'var(--accent-bg-strong)', color: 'var(--accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
+            <MailCheck size={32} />
+          </div>
+
+          <h2 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--text-primary)', marginBottom: 8 }}>
+            Check your email!
+          </h2>
+
+          <p style={{ fontSize: '0.88rem', color: 'var(--text-secondary)', lineHeight: 1.5, marginBottom: 16 }}>
+            We've sent a verification link to:<br />
+            <strong style={{ color: 'var(--text-primary)', fontSize: '0.95rem' }}>{pendingVerificationEmail}</strong>
+          </p>
+
+          <div style={{ background: 'var(--bg-tertiary)', padding: '12px 16px', borderRadius: 'var(--radius-md)', fontSize: '0.8rem', color: 'var(--text-tertiary)', marginBottom: 20, textAlign: 'left' }}>
+            💡 Click the link in your email to verify your student account. Once clicked, you can return here and sign in.
+          </div>
+
+          {resendSuccess && (
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, color: 'var(--accent)', fontSize: '0.82rem', marginBottom: 12 }}>
+              <Check size={14} /> Verification email resent successfully!
+            </div>
+          )}
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            <button
+              className="btn btn-primary btn-pill"
+              onClick={() => {
+                setView('form');
+                setMode('signin');
+                setEmailOrUsername(pendingVerificationEmail);
+              }}
+            >
+              Continue to Sign In <ArrowRight size={15} />
+            </button>
+
+            <button
+              className="btn btn-secondary btn-pill btn-sm"
+              onClick={() => handleResendVerification(pendingVerificationEmail)}
+              disabled={resendCooldown > 0}
+            >
+              <RotateCcw size={13} />
+              {resendCooldown > 0 ? `Resend email in ${resendCooldown}s` : 'Resend Verification Email'}
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ── Main Auth Form ────────────────────────────────────────────
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal auth-card" style={{ maxWidth: 460 }} onClick={e => e.stopPropagation()}>
         <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 4 }}>
           <button className="icon-btn" onClick={onClose}>
-            <X size={20} />
+            <X size={18} />
           </button>
         </div>
 
         {/* Brand Header */}
         <div className="auth-header">
-          <div className="auth-logo-badge">
-            <Sparkles size={24} />
+          <div className="auth-logo-badge" style={{ background: 'var(--accent-bg-strong)', color: 'var(--accent)' }}>
+            <Sparkles size={22} />
           </div>
           <h2 className="auth-brand">CampusSparks</h2>
-          <p className="auth-tagline">Where campus connects, matches & vibes ✨</p>
+          <p className="auth-tagline">Where campus connects, matches & vibes</p>
         </div>
 
         {/* Tab Switcher */}
@@ -177,22 +304,36 @@ export default function AuthModal({ initialMode = 'signup', onClose, onSuccess }
           <button
             type="button"
             className={`auth-tab ${mode === 'signup' ? 'active' : ''}`}
-            onClick={() => { setMode('signup'); setErrorMsg(null); }}
+            onClick={() => { setMode('signup'); setErrorMsg(null); setUnconfirmedEmail(null); }}
           >
             Create Account
           </button>
           <button
             type="button"
             className={`auth-tab ${mode === 'signin' ? 'active' : ''}`}
-            onClick={() => { setMode('signin'); setErrorMsg(null); }}
+            onClick={() => { setMode('signin'); setErrorMsg(null); setUnconfirmedEmail(null); }}
           >
             Sign In
           </button>
         </div>
 
         {errorMsg && (
-          <div className="auth-error-banner">
-            {errorMsg}
+          <div className="auth-error-banner" style={{ background: 'rgba(199, 92, 92, 0.12)', border: '1px solid var(--color-error)', color: 'var(--color-error)', padding: '10px 14px', borderRadius: 'var(--radius-md)', fontSize: '0.82rem', marginBottom: 14 }}>
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
+              <AlertCircle size={16} style={{ flexShrink: 0, marginTop: 1 }} />
+              <div>
+                <div>{errorMsg}</div>
+                {unconfirmedEmail && (
+                  <button
+                    type="button"
+                    onClick={() => handleResendVerification(unconfirmedEmail)}
+                    style={{ background: 'none', border: 'none', color: 'var(--accent)', textDecoration: 'underline', cursor: 'pointer', padding: '4px 0 0', fontSize: '0.78rem', fontWeight: 600, display: 'block' }}
+                  >
+                    Resend verification link to {unconfirmedEmail}
+                  </button>
+                )}
+              </div>
+            </div>
           </div>
         )}
 
@@ -223,7 +364,7 @@ export default function AuthModal({ initialMode = 'signup', onClose, onSuccess }
                 </div>
               </div>
 
-              {/* Display Name & Gen-Z Username */}
+              {/* Display Name & Username */}
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 12 }}>
                 <div className="form-group" style={{ marginBottom: 0 }}>
                   <label className="form-label" style={{ fontSize: '0.74rem' }}>Display Name</label>
@@ -264,118 +405,137 @@ export default function AuthModal({ initialMode = 'signup', onClose, onSuccess }
                 </div>
               </div>
 
-              {/* Major & Grad Year */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr', gap: 8, marginBottom: 12 }}>
+              {/* Student Email */}
+              <div className="form-group" style={{ marginBottom: 12 }}>
+                <label className="form-label" style={{ fontSize: '0.74rem' }}>
+                  Student / University Email
+                </label>
+                <div className="auth-input-wrapper">
+                  <Mail size={15} />
+                  <input
+                    type="email"
+                    required
+                    placeholder="student@university.edu or name@gmail.com"
+                    value={email}
+                    onChange={e => setEmail(e.target.value)}
+                  />
+                </div>
+                <div style={{ fontSize: '0.68rem', color: 'var(--text-tertiary)', marginTop: 2 }}>
+                  A confirmation email will be sent to verify your student status.
+                </div>
+              </div>
+
+              {/* Major & Graduation Year */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr', gap: 10, marginBottom: 12 }}>
                 <div className="form-group" style={{ marginBottom: 0 }}>
                   <label className="form-label" style={{ fontSize: '0.74rem' }}>Major</label>
                   <select
-                    className="auth-input-select"
                     value={major}
                     onChange={e => setMajor(e.target.value)}
+                    className="auth-select"
                   >
                     {MAJORS.map(m => (
                       <option key={m} value={m}>{m}</option>
                     ))}
                   </select>
                 </div>
+
                 <div className="form-group" style={{ marginBottom: 0 }}>
-                  <label className="form-label" style={{ fontSize: '0.74rem' }}>Graduation</label>
+                  <label className="form-label" style={{ fontSize: '0.74rem' }}>Grad Year</label>
                   <select
-                    className="auth-input-select"
                     value={gradYear}
                     onChange={e => setGradYear(e.target.value)}
+                    className="auth-select"
                   >
-                    <option value="2025">2025</option>
-                    <option value="2026">2026</option>
-                    <option value="2027">2027</option>
-                    <option value="2028">2028</option>
+                    {['2025', '2026', '2027', '2028', '2029'].map(y => (
+                      <option key={y} value={y}>{y}</option>
+                    ))}
                   </select>
                 </div>
               </div>
 
-              {/* Email */}
-              <div className="form-group" style={{ marginBottom: 12 }}>
-                <label className="form-label" style={{ fontSize: '0.74rem' }}>Email</label>
+              {/* Password */}
+              <div className="form-group" style={{ marginBottom: 16 }}>
+                <label className="form-label" style={{ fontSize: '0.74rem' }}>Password (min 6 chars)</label>
                 <div className="auth-input-wrapper">
-                  <Mail size={16} />
+                  <Lock size={15} />
                   <input
-                    type="text"
-                    inputMode="email"
-                    autoCapitalize="none"
-                    autoCorrect="off"
-                    spellCheck={false}
+                    type="password"
                     required
-                    placeholder="student@college.edu or gmail.com"
-                    value={email}
-                    onChange={e => setEmail(e.target.value)}
+                    minLength={6}
+                    placeholder="Create a strong password"
+                    value={password}
+                    onChange={e => setPassword(e.target.value)}
                   />
                 </div>
               </div>
             </>
           ) : (
-            /* Sign In Mode: Username OR Email */
-            <div className="form-group" style={{ marginBottom: 12 }}>
-              <label className="form-label" style={{ fontSize: '0.74rem' }}>Username or Email</label>
-              <div className="auth-input-wrapper">
-                <AtSign size={16} />
-                <input
-                  type="text"
-                  autoCapitalize="none"
-                  autoCorrect="off"
-                  spellCheck={false}
-                  required
-                  placeholder="@username or email address"
-                  value={emailOrUsername}
-                  onChange={e => setEmailOrUsername(e.target.value)}
-                />
+            <>
+              {/* Sign In Form */}
+              <div className="form-group" style={{ marginBottom: 12 }}>
+                <label className="form-label" style={{ fontSize: '0.74rem' }}>
+                  Email or Username
+                </label>
+                <div className="auth-input-wrapper">
+                  <Mail size={15} />
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. name@gmail.com or @username"
+                    value={emailOrUsername}
+                    onChange={e => setEmailOrUsername(e.target.value)}
+                  />
+                </div>
               </div>
-            </div>
+
+              <div className="form-group" style={{ marginBottom: 16 }}>
+                <label className="form-label" style={{ fontSize: '0.74rem' }}>Password</label>
+                <div className="auth-input-wrapper">
+                  <Lock size={15} />
+                  <input
+                    type="password"
+                    required
+                    placeholder="Enter your password"
+                    value={password}
+                    onChange={e => setPassword(e.target.value)}
+                  />
+                </div>
+              </div>
+            </>
           )}
 
-          {/* Password */}
-          <div className="form-group" style={{ marginBottom: 16 }}>
-            <label className="form-label" style={{ fontSize: '0.74rem' }}>Password</label>
-            <div className="auth-input-wrapper">
-              <Lock size={16} />
-              <input
-                type="password"
-                required
-                placeholder="••••••••"
-                value={password}
-                onChange={e => setPassword(e.target.value)}
-              />
-            </div>
-          </div>
-
+          {/* Submit */}
           <button
             type="submit"
-            className="btn btn-primary btn-pill"
-            style={{ width: '100%', padding: '12px' }}
+            className="btn btn-primary btn-lg btn-pill"
+            style={{ width: '100%' }}
             disabled={loading}
           >
-            {loading ? 'Entering Campus...' : mode === 'signup' ? 'Create Account & Enter' : 'Sign In'}
-            <ArrowRight size={16} />
+            {loading ? 'Processing...' : mode === 'signup' ? 'Create Student Account' : 'Sign In'}
+            {!loading && <ArrowRight size={16} />}
           </button>
         </form>
 
         {/* Divider */}
         <div className="auth-divider">
-          <span>OR</span>
+          <span>or explore first</span>
         </div>
 
-        {/* Guest 1-Click Access */}
+        {/* Instant Demo */}
         <button
           type="button"
           className="btn btn-secondary btn-pill"
-          style={{ width: '100%', padding: '10px', fontSize: '0.82rem' }}
+          style={{ width: '100%', fontSize: '0.84rem' }}
           onClick={handleGuestEntry}
         >
-          ⚡ Instant Demo Access
+          Instant Demo as Student Guest
         </button>
 
-        <div className="auth-security-badge">
-          <ShieldCheck size={14} />
-          <span>Encrypted with PostgreSQL & Row Level Security</span>
+        {/* Security Note */}
+        <div className="auth-security-note" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, marginTop: 14 }}>
+          <ShieldCheck size={14} style={{ color: 'var(--accent)' }} />
+          <span>Encrypted student authentication. Your privacy is protected.</span>
         </div>
       </div>
     </div>

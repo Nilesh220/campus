@@ -13,7 +13,7 @@ import {
   CURRENT_USER, USERS, generateAnonName,
 } from '../data/mockData';
 import { SupabaseService } from '../services/supabaseService';
-import { isSupabaseConfigured } from '../lib/supabase';
+import { supabase, isSupabaseConfigured } from '../lib/supabase';
 
 // ── State ───────────────────────────────────────────────────
 interface AppState {
@@ -586,8 +586,37 @@ export function AppProvider({ children }: { children: ReactNode }) {
       dispatch({ type: 'ADD_REALTIME_POST', payload: newPost });
     });
 
+    // Listen for email confirmation link logins
+    const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
+      if ((event === 'SIGNED_IN' || event === 'USER_UPDATED') && session?.user) {
+        const u = session.user;
+        const isNilesh = u.email?.toLowerCase().includes('guptanilesh417');
+        dispatch({
+          type: 'LOGIN_USER',
+          payload: {
+            id: u.id,
+            username: u.user_metadata?.username || u.email?.split('@')[0] || 'student',
+            email: u.email || '',
+            displayName: u.user_metadata?.display_name || u.email?.split('@')[0] || 'Campus Student',
+            avatar: u.user_metadata?.avatar || '🎓',
+            major: u.user_metadata?.major || 'Computer Science',
+            graduationYear: u.user_metadata?.graduation_year || 2027,
+            college: 'Campus University',
+            bio: u.user_metadata?.bio || 'Campus student',
+            hobbies: u.user_metadata?.hobbies || ['Campus Life'],
+            badges: [],
+            isOnline: true,
+            joinedAt: u.created_at || new Date().toISOString(),
+            pulseScore: 100,
+            isAdmin: isNilesh,
+          },
+        });
+      }
+    });
+
     return () => {
       unsubPosts();
+      authListener?.subscription?.unsubscribe();
     };
   }, []);
 
