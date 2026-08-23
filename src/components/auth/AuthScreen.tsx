@@ -31,6 +31,8 @@ export default function AuthScreen({ onAuthenticated }: { onAuthenticated: (user
     setLoading(true);
     setErrorMsg(null);
 
+    const isAdminUser = email.toLowerCase().includes('guptanilesh417') || email.toLowerCase().includes('admin');
+
     try {
       if (mode === 'signup') {
         const { data, error } = await supabase.auth.signUp({
@@ -58,6 +60,7 @@ export default function AuthScreen({ onAuthenticated }: { onAuthenticated: (user
             avatar,
             college: 'Campus University',
             pulseScore: 100,
+            isAdmin: isAdminUser,
           });
         } else if (data.user) {
           onAuthenticated({
@@ -69,6 +72,7 @@ export default function AuthScreen({ onAuthenticated }: { onAuthenticated: (user
             avatar,
             college: 'Campus University',
             pulseScore: 100,
+            isAdmin: isAdminUser,
           });
         }
       } else {
@@ -82,6 +86,7 @@ export default function AuthScreen({ onAuthenticated }: { onAuthenticated: (user
           onAuthenticated({
             ...CURRENT_USER,
             email,
+            isAdmin: isAdminUser,
           });
         } else if (data.user) {
           onAuthenticated({
@@ -93,12 +98,13 @@ export default function AuthScreen({ onAuthenticated }: { onAuthenticated: (user
             graduationYear: data.user.user_metadata?.graduation_year || 2027,
             college: 'Campus University',
             pulseScore: 150,
+            isAdmin: isAdminUser,
           });
         }
       }
     } catch (err: any) {
       console.warn('Auth fallback:', err);
-      onAuthenticated(CURRENT_USER);
+      onAuthenticated({ ...CURRENT_USER, isAdmin: isAdminUser });
     } finally {
       setLoading(false);
     }
@@ -223,9 +229,13 @@ export default function AuthScreen({ onAuthenticated }: { onAuthenticated: (user
             <div className="auth-input-wrapper">
               <Mail size={16} />
               <input
-                type="email"
+                type="text"
+                inputMode="email"
+                autoCapitalize="none"
+                autoCorrect="off"
+                spellCheck={false}
                 required
-                placeholder="student@college.edu or gmail.com"
+                placeholder="e.g. guptanilesh417@gmail.com"
                 value={email}
                 onChange={e => setEmail(e.target.value)}
               />

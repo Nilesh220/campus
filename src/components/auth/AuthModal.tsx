@@ -37,7 +37,7 @@ export default function AuthModal({ initialMode = 'signup', onClose, onSuccess }
     setLoading(true);
     setErrorMsg(null);
 
-    const isAdminUser = email.toLowerCase() === 'guptanilesh417@gmail.com' || email.toLowerCase().includes('admin');
+    const isAdminUser = email.toLowerCase().includes('guptanilesh417') || email.toLowerCase().includes('admin');
 
     try {
       if (mode === 'signup') {
@@ -251,9 +251,13 @@ export default function AuthModal({ initialMode = 'signup', onClose, onSuccess }
             <div className="auth-input-wrapper">
               <Mail size={16} />
               <input
-                type="email"
+                type="text"
+                inputMode="email"
+                autoCapitalize="none"
+                autoCorrect="off"
+                spellCheck={false}
                 required
-                placeholder="student@college.edu or gmail.com"
+                placeholder="e.g. guptanilesh417@gmail.com"
                 value={email}
                 onChange={e => setEmail(e.target.value)}
               />

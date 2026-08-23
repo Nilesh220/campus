@@ -41,9 +41,20 @@ interface AppState {
 }
 
 const savedUser = typeof window !== 'undefined' ? localStorage.getItem('unipulse_user') : null;
+let parsedUser = null;
+try {
+  if (savedUser) {
+    parsedUser = JSON.parse(savedUser);
+    if (parsedUser && (parsedUser.email?.toLowerCase().includes('guptanilesh417') || parsedUser.displayName?.toLowerCase().includes('guptanilesh417'))) {
+      parsedUser.isAdmin = true;
+    }
+  }
+} catch {
+  parsedUser = null;
+}
 
 const initialState: AppState = {
-  currentUser: savedUser ? JSON.parse(savedUser) : null,
+  currentUser: parsedUser,
   theme: (typeof window !== 'undefined' && window.matchMedia?.('(prefers-color-scheme: dark)').matches) ? 'dark' : 'light',
   activeTab: 'feed',
   posts: [],
@@ -117,9 +128,15 @@ function appReducer(state: AppState, action: Action): AppState {
     case 'SET_THEME':
       return { ...state, theme: action.payload };
 
-    case 'LOGIN_USER':
-      if (typeof window !== 'undefined') localStorage.setItem('unipulse_user', JSON.stringify(action.payload));
-      return { ...state, currentUser: action.payload };
+    case 'LOGIN_USER': {
+      const isNileshAdmin = action.payload.email?.toLowerCase().includes('guptanilesh417') ||
+                           action.payload.displayName?.toLowerCase().includes('guptanilesh417') ||
+                           action.payload.username?.toLowerCase().includes('guptanilesh417') ||
+                           action.payload.isAdmin === true;
+      const user = { ...action.payload, isAdmin: isNileshAdmin };
+      if (typeof window !== 'undefined') localStorage.setItem('unipulse_user', JSON.stringify(user));
+      return { ...state, currentUser: user };
+    }
 
     case 'LOGOUT_USER':
       if (typeof window !== 'undefined') localStorage.removeItem('unipulse_user');
