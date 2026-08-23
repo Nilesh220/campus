@@ -53,6 +53,16 @@ try {
   parsedUser = null;
 }
 
+const savedConvs = typeof window !== 'undefined' ? localStorage.getItem('unipulse_conversations') : null;
+let parsedConvs: DirectConversation[] = [];
+try {
+  if (savedConvs) {
+    parsedConvs = JSON.parse(savedConvs);
+  }
+} catch {
+  parsedConvs = [];
+}
+
 const initialState: AppState = {
   currentUser: parsedUser,
   theme: (typeof window !== 'undefined' && window.matchMedia?.('(prefers-color-scheme: dark)').matches) ? 'dark' : 'light',
@@ -60,7 +70,7 @@ const initialState: AppState = {
   posts: [],
   groups: [],
   announcements: [],
-  conversations: [],
+  conversations: parsedConvs,
   notifications: [],
   activeMatch: null,
   sidebarOpen: false,
@@ -452,19 +462,21 @@ function appReducer(state: AppState, action: Action): AppState {
       const me = state.currentUser || CURRENT_USER;
       const peer = USERS.find(u => u.id === state.activeMatch!.peerId) || USERS[1];
       const newConv: DirectConversation = {
-        id: `dc${Date.now()}`,
+        id: `dc_${peer.id}_${Date.now()}`,
         participantId: peer.id,
         messages: [
-          { id: `dm${Date.now()}`, senderId: peer.id, content: `Hey ${me.displayName}! Great connecting on Campus Roulette! 🎉`, timestamp: new Date().toISOString(), type: 'text' },
+          { id: `dm_${Date.now()}`, senderId: peer.id, content: `Hey ${me.displayName}! Great connecting on Campus Roulette! 🎉`, timestamp: new Date().toISOString(), type: 'text' },
         ],
         lastMessage: `Hey ${me.displayName}! Great connecting on Campus Roulette! 🎉`,
         lastMessageAt: new Date().toISOString(),
         unreadCount: 1,
       };
+      const updatedConvs = [newConv, ...state.conversations];
+      if (typeof window !== 'undefined') localStorage.setItem('unipulse_conversations', JSON.stringify(updatedConvs));
       return {
         ...state,
         activeMatch: { ...state.activeMatch, status: 'revealed' },
-        conversations: [newConv, ...state.conversations],
+        conversations: updatedConvs,
       };
     }
 
@@ -490,12 +502,14 @@ function appReducer(state: AppState, action: Action): AppState {
         lastMessageAt: new Date().toISOString(),
         unreadCount: 1,
       };
+      const updatedConvs = [newConv, ...state.conversations];
+      if (typeof window !== 'undefined') localStorage.setItem('unipulse_conversations', JSON.stringify(updatedConvs));
       return {
         ...state,
         activeMatch: null,
         activeTab: 'messages',
         activeConversationId: newConv.id,
-        conversations: [newConv, ...state.conversations],
+        conversations: updatedConvs,
       };
     }
 
@@ -504,31 +518,36 @@ function appReducer(state: AppState, action: Action): AppState {
       return { ...state, activeMatch: null };
 
     // ── Direct Messages
-    case 'SELECT_CONVERSATION':
+    case 'SELECT_CONVERSATION': {
+      const updatedConvs = state.conversations.map(c =>
+        c.id === action.payload ? { ...c, unreadCount: 0 } : c
+      );
+      if (typeof window !== 'undefined') localStorage.setItem('unipulse_conversations', JSON.stringify(updatedConvs));
       return {
         ...state,
         activeConversationId: action.payload,
-        conversations: state.conversations.map(c =>
-          c.id === action.payload ? { ...c, unreadCount: 0 } : c
-        ),
+        conversations: updatedConvs,
       };
+    }
 
     case 'SEND_DM': {
       const me = state.currentUser || CURRENT_USER;
       const msg: ChatMessage = {
-        id: `dm${Date.now()}`,
+        id: `dm_${Date.now()}`,
         senderId: me.id,
         content: action.payload.content,
         timestamp: new Date().toISOString(),
         type: 'text',
       };
+      const updatedConvs = state.conversations.map(c =>
+        c.id === action.payload.conversationId
+          ? { ...c, messages: [...c.messages, msg], lastMessage: action.payload.content, lastMessageAt: new Date().toISOString() }
+          : c
+      );
+      if (typeof window !== 'undefined') localStorage.setItem('unipulse_conversations', JSON.stringify(updatedConvs));
       return {
         ...state,
-        conversations: state.conversations.map(c =>
-          c.id === action.payload.conversationId
-            ? { ...c, messages: [...c.messages, msg], lastMessage: action.payload.content, lastMessageAt: new Date().toISOString() }
-            : c
-        ),
+        conversations: updatedConvs,
       };
     }
 
