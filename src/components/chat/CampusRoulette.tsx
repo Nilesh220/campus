@@ -1,6 +1,6 @@
 // ============================================================
 // Random Student Chat — Supabase Realtime 1-on-1 Matchmaking
-// Guaranteed Device-Unique Session IDs & Realtime WebSocket Pairing
+// Symmetric Coordinator Pairing & WebSocket Room Sync
 // ============================================================
 
 import { useState, useRef, useEffect, useCallback } from 'react';
@@ -43,7 +43,7 @@ export default function RandomChat() {
   const isMatchingRef = useRef(false);
 
   const me = state.currentUser || CURRENT_USER;
-  // Guarantees every single device/tab has a 100% unique session ID regardless of login state!
+  // Guarantees every single device/tab has a 100% unique session ID
   const mySessionId = useRef(`sess_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`).current;
   const myAnonProfile = useRef(generateAnonName()).current;
 
@@ -175,59 +175,26 @@ export default function RandomChat() {
       lobbyChannelRef.current = null;
     }
 
-    const lobby = supabase.channel('campus_roulette_lobby_v3', {
+    const lobby = supabase.channel('campus_roulette_lobby_v4', {
       config: {
-        broadcast: { ack: false },
+        broadcast: { ack: true },
         presence: { key: mySessionId },
       },
     });
 
     lobbyChannelRef.current = lobby;
 
-    // Presence Sync
+    // Active Pulse Heartbeat Listener with Symmetric Coordinator Self-Connection
     lobby
-      .on('presence', { event: 'sync' }, () => {
-        if (isMatchingRef.current) return;
-        const stateObj = lobby.presenceState();
-        const searchers: any[] = [];
-
-        Object.keys(stateObj).forEach(key => {
-          const presences = stateObj[key] as any[];
-          if (presences && presences.length > 0) {
-            searchers.push(presences[0]);
-          }
-        });
-
-        const peers = searchers.filter(s => s.sessionId !== mySessionId);
-        if (peers.length > 0) {
-          const peer = peers[0];
-          // Deterministic coordinator pattern by sorting unique session IDs
-          if (mySessionId < peer.sessionId) {
-            const roomId = `auto_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
-            lobby.send({
-              type: 'broadcast',
-              event: 'MATCH_PAIRED',
-              payload: {
-                sessionA: mySessionId,
-                sessionB: peer.sessionId,
-                roomId,
-                userAPseudonym: myAnonProfile.name,
-                userAEmoji: myAnonProfile.emoji,
-                userBPseudonym: peer.pseudonym,
-                userBEmoji: peer.emoji,
-                interests: selectedInterests,
-              },
-            });
-          }
-        }
-      })
-      // Active Pulse Heartbeat
-      .on('broadcast', { event: 'SEARCH_PULSE' }, ({ payload }) => {
+      .on('broadcast', { event: 'SEARCH_PULSE' }, async ({ payload }) => {
         if (isMatchingRef.current) return;
         if (payload.sessionId !== mySessionId) {
+          // Coordinator rule: if my session ID is smaller, coordinate the match
           if (mySessionId < payload.sessionId) {
-            const roomId = `pulse_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
-            lobby.send({
+            const roomId = `auto_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
+            
+            // Broadcast to peer
+            await lobby.send({
               type: 'broadcast',
               event: 'MATCH_PAIRED',
               payload: {
@@ -241,36 +208,25 @@ export default function RandomChat() {
                 interests: selectedInterests,
               },
             });
+
+            // Coordinator IMMEDIATELY self-connects!
+            connectToRoom(roomId, payload.sessionId, payload.pseudonym, payload.emoji, selectedInterests);
           }
         }
       })
-      // Pair Found Event
+      // Pair Found Event Listener for Non-Coordinator Peer
       .on('broadcast', { event: 'MATCH_PAIRED' }, ({ payload }) => {
         if (isMatchingRef.current) return;
-        if (payload.sessionA === mySessionId || payload.sessionB === mySessionId) {
-          const isUserA = payload.sessionA === mySessionId;
-          const peerId = isUserA ? payload.sessionB : payload.sessionA;
-          const peerPseudonym = isUserA ? payload.userBPseudonym : payload.userAPseudonym;
-          const peerEmoji = isUserA ? payload.userBEmoji : payload.userAEmoji;
-          const roomId = payload.roomId;
-
-          connectToRoom(roomId, peerId, peerPseudonym, peerEmoji, payload.interests || []);
+        if (payload.sessionB === mySessionId) {
+          connectToRoom(payload.roomId, payload.sessionA, payload.userAPseudonym, payload.userAEmoji, payload.interests || []);
+        } else if (payload.sessionA === mySessionId) {
+          connectToRoom(payload.roomId, payload.sessionB, payload.userBPseudonym, payload.userBEmoji, payload.interests || []);
         }
       })
       .subscribe(async status => {
         if (status === 'SUBSCRIBED') {
-          // Track unique presence
-          await lobby.track({
-            sessionId: mySessionId,
-            userId: me.id,
-            pseudonym: myAnonProfile.name,
-            emoji: myAnonProfile.emoji,
-            interests: selectedInterests,
-            joinedAt: Date.now(),
-          });
-
           // Immediate pulse broadcast
-          lobby.send({
+          await lobby.send({
             type: 'broadcast',
             event: 'SEARCH_PULSE',
             payload: {
@@ -282,10 +238,10 @@ export default function RandomChat() {
             },
           });
 
-          // Heartbeat every 1.2 seconds
-          heartbeatIntervalRef.current = setInterval(() => {
+          // Heartbeat every 1 second
+          heartbeatIntervalRef.current = setInterval(async () => {
             if (isMatchingRef.current) return;
-            lobby.send({
+            await lobby.send({
               type: 'broadcast',
               event: 'SEARCH_PULSE',
               payload: {
@@ -296,7 +252,7 @@ export default function RandomChat() {
                 interests: selectedInterests,
               },
             });
-          }, 1200);
+          }, 1000);
         }
       });
   }, [mySessionId, myAnonProfile, selectedInterests, me.id, dispatch, connectToRoom]);
