@@ -5,14 +5,17 @@
 import { useState, useEffect } from 'react';
 import {
   Flame, Shuffle, Users, Megaphone, MessageCircle,
-  Settings, LogOut, ShieldCheck, User, Sparkles
+  Settings, LogOut, ShieldCheck, User, Sparkles, Vote, Ghost, Bell
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { CURRENT_USER } from '../../data/mockData';
+import { notificationService } from '../../services/notificationService';
 import type { NavTab } from '../../types';
 
-const NAV_ITEMS: { id: NavTab; label: string; icon: React.ReactNode }[] = [
+const NAV_ITEMS: { id: NavTab; label: string; icon: React.ReactNode; badge?: string }[] = [
   { id: 'feed', label: 'Pulse Feed', icon: <Flame size={19} /> },
+  { id: 'polls', label: 'Polls & Hot Takes', icon: <Vote size={19} />, badge: '🔥' },
+  { id: 'confessions', label: 'Confessions Wall', icon: <Ghost size={19} />, badge: '🤫' },
   { id: 'match', label: 'Random Chat', icon: <Shuffle size={19} /> },
   { id: 'groups', label: 'Groups & Hubs', icon: <Users size={19} /> },
   { id: 'bulletin', label: 'Bulletin Board', icon: <Megaphone size={19} /> },
@@ -94,12 +97,27 @@ export default function Sidebar() {
               }}
             >
               {item.icon}
-              {item.label}
+              <span style={{ flex: 1 }}>{item.label}</span>
+              {item.badge && (
+                <span className="sidebar-nav-chip">{item.badge}</span>
+              )}
               {item.id === 'messages' && unreadDMs > 0 && (
                 <span className="item-badge">{unreadDMs}</span>
               )}
             </button>
           ))}
+
+          {/* Web Push Notification Enable Prompt */}
+          {typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'default' && (
+            <button
+              className="sidebar-item"
+              onClick={() => notificationService.requestPermission()}
+              style={{ color: 'var(--accent)', fontWeight: 600 }}
+            >
+              <Bell size={19} />
+              Enable Push Alerts
+            </button>
+          )}
 
           {/* PWA Install Banner Button */}
           {!isInstalled && (
@@ -107,7 +125,7 @@ export default function Sidebar() {
               className="sidebar-item pwa-install-sidebar-btn"
               onClick={handleInstallClick}
               style={{
-                marginTop: 8,
+                marginTop: 6,
                 background: 'var(--accent-bg-strong)',
                 color: 'var(--accent)',
                 fontWeight: 700,

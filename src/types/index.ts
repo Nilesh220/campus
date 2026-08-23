@@ -164,7 +164,7 @@ export interface DirectConversation {
 
 export interface Notification {
   id: string;
-  type: 'upvote' | 'comment' | 'friend-request' | 'match' | 'group-invite' | 'announcement';
+  type: 'upvote' | 'comment' | 'friend-request' | 'match' | 'group-invite' | 'announcement' | 'poll' | 'confession';
   title: string;
   message: string;
   timestamp: string;
@@ -172,5 +172,48 @@ export interface Notification {
   actionUrl?: string;
 }
 
+// ── Polls & Hot Takes ───────────────────────────────────────
+export interface PollOption {
+  id: string;
+  text: string;
+  votes: number;
+}
+
+export interface Poll {
+  id: string;
+  question: string;
+  description?: string;
+  options: PollOption[];
+  totalVotes: number;
+  userVotedOptionId: string | null;
+  createdBy: string;
+  creatorName: string;
+  expiresAt: string;
+  createdAt: string;
+  isHotTake?: boolean;
+  category: 'academic' | 'campus-life' | 'mess-food' | 'general' | 'drama';
+  commentsCount: number;
+}
+
+// ── Anonymous Confessions & Secrets ─────────────────────────
+export interface Confession {
+  id: string;
+  content: string;
+  pseudonym: string;
+  emoji: string;
+  upvotes: number;
+  downvotes: number;
+  reactions: Record<string, number>;
+  userReaction?: string | null;
+  isUpvoted?: boolean;
+  isDownvoted?: boolean;
+  commentsCount: number;
+  createdAt: string;
+  college?: string;
+  tags: string[];
+  isFlagged?: boolean;
+}
+
 // Navigation
-export type NavTab = 'feed' | 'match' | 'groups' | 'bulletin' | 'messages';
+export type NavTab = 'feed' | 'polls' | 'confessions' | 'match' | 'groups' | 'bulletin' | 'messages' | 'admin';
+

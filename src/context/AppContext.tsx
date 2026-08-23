@@ -8,9 +8,11 @@ import type {
   Post, Group, Announcement, DirectConversation,
   Notification, AnonMatch, NavTab, ThemeMode,
   ReactionType, RSVPStatus, PostCategory, ChatMessage, GroupMessage, User,
+  Poll, Confession,
 } from '../types';
 import {
   CURRENT_USER, USERS, generateAnonName,
+  INITIAL_POLLS, INITIAL_CONFESSIONS,
 } from '../data/mockData';
 import { SupabaseService } from '../services/supabaseService';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
@@ -23,6 +25,8 @@ interface AppState {
   posts: Post[];
   groups: Group[];
   announcements: Announcement[];
+  polls: Poll[];
+  confessions: Confession[];
   conversations: DirectConversation[];
   notifications: Notification[];
   activeMatch: AnonMatch | null;
@@ -71,6 +75,12 @@ try {
   parsedConvs = [];
 }
 
+const savedPolls = typeof window !== 'undefined' ? localStorage.getItem('campussparks_polls') : null;
+const initialPollsData: Poll[] = savedPolls ? JSON.parse(savedPolls) : INITIAL_POLLS;
+
+const savedConfessions = typeof window !== 'undefined' ? localStorage.getItem('campussparks_confessions') : null;
+const initialConfessionsData: Confession[] = savedConfessions ? JSON.parse(savedConfessions) : INITIAL_CONFESSIONS;
+
 const initialState: AppState = {
   currentUser: parsedUser,
   theme: (typeof window !== 'undefined' && window.matchMedia?.('(prefers-color-scheme: dark)').matches) ? 'dark' : 'light',
@@ -78,6 +88,8 @@ const initialState: AppState = {
   posts: [],
   groups: [],
   announcements: [],
+  polls: initialPollsData,
+  confessions: initialConfessionsData,
   conversations: parsedConvs,
   notifications: [],
   activeMatch: null,
@@ -126,6 +138,14 @@ type Action =
   | { type: 'SET_ANNOUNCEMENTS'; payload: Announcement[] }
   | { type: 'ADD_ANNOUNCEMENT'; payload: Announcement }
   | { type: 'RSVP_ANNOUNCEMENT'; payload: { id: string; status: RSVPStatus } }
+  | { type: 'VOTE_POLL'; payload: { pollId: string; optionId: string } }
+  | { type: 'CREATE_POLL'; payload: Poll }
+  | { type: 'DELETE_POLL'; payload: string }
+  | { type: 'ADD_CONFESSION'; payload: Confession }
+  | { type: 'REACT_CONFESSION'; payload: { confessionId: string; reaction: string } }
+  | { type: 'UPVOTE_CONFESSION'; payload: string }
+  | { type: 'DOWNVOTE_CONFESSION'; payload: string }
+  | { type: 'DELETE_CONFESSION'; payload: string }
   | { type: 'START_MATCHING' }
   | { type: 'MATCH_FOUND'; payload: AnonMatch }
   | { type: 'SEND_CHAT_MESSAGE'; payload: string }
@@ -415,6 +435,105 @@ function appReducer(state: AppState, action: Action): AppState {
           return { ...a, userRsvp: newStatus, rsvpCount, interestedCount };
         }),
       };
+
+    // ── Campus Polls & Hot Takes
+    case 'VOTE_POLL': {
+      const updatedPolls = state.polls.map(p => {
+        if (p.id !== action.payload.pollId) return p;
+        if (p.userVotedOptionId === action.payload.optionId) return p; // already voted for this option
+
+        const hadPreviousVote = p.userVotedOptionId !== null;
+        const updatedOptions = p.options.map(opt => {
+          if (opt.id === action.payload.optionId) {
+            return { ...opt, votes: opt.votes + 1 };
+          }
+          if (hadPreviousVote && opt.id === p.userVotedOptionId) {
+            return { ...opt, votes: Math.max(0, opt.votes - 1) };
+          }
+          return opt;
+        });
+
+        return {
+          ...p,
+          options: updatedOptions,
+          totalVotes: hadPreviousVote ? p.totalVotes : p.totalVotes + 1,
+          userVotedOptionId: action.payload.optionId,
+        };
+      });
+      if (typeof window !== 'undefined') localStorage.setItem('campussparks_polls', JSON.stringify(updatedPolls));
+      return { ...state, polls: updatedPolls };
+    }
+
+    case 'CREATE_POLL': {
+      const updatedPolls = [action.payload, ...state.polls];
+      if (typeof window !== 'undefined') localStorage.setItem('campussparks_polls', JSON.stringify(updatedPolls));
+      return { ...state, polls: updatedPolls };
+    }
+
+    case 'DELETE_POLL': {
+      const updatedPolls = state.polls.filter(p => p.id !== action.payload);
+      if (typeof window !== 'undefined') localStorage.setItem('campussparks_polls', JSON.stringify(updatedPolls));
+      return { ...state, polls: updatedPolls };
+    }
+
+    // ── Anonymous Confessions & Secrets
+    case 'ADD_CONFESSION': {
+      const updatedConfessions = [action.payload, ...state.confessions];
+      if (typeof window !== 'undefined') localStorage.setItem('campussparks_confessions', JSON.stringify(updatedConfessions));
+      return { ...state, confessions: updatedConfessions };
+    }
+
+    case 'REACT_CONFESSION': {
+      const updatedConfessions = state.confessions.map(c => {
+        if (c.id !== action.payload.confessionId) return c;
+        const currentReactions = { ...c.reactions };
+        const emoji = action.payload.reaction;
+        currentReactions[emoji] = (currentReactions[emoji] || 0) + 1;
+        return {
+          ...c,
+          reactions: currentReactions,
+          userReaction: emoji,
+        };
+      });
+      if (typeof window !== 'undefined') localStorage.setItem('campussparks_confessions', JSON.stringify(updatedConfessions));
+      return { ...state, confessions: updatedConfessions };
+    }
+
+    case 'UPVOTE_CONFESSION': {
+      const updatedConfessions = state.confessions.map(c => {
+        if (c.id !== action.payload) return c;
+        const isUp = c.isUpvoted;
+        return {
+          ...c,
+          upvotes: isUp ? Math.max(0, c.upvotes - 1) : c.upvotes + 1,
+          isUpvoted: !isUp,
+          isDownvoted: false,
+        };
+      });
+      if (typeof window !== 'undefined') localStorage.setItem('campussparks_confessions', JSON.stringify(updatedConfessions));
+      return { ...state, confessions: updatedConfessions };
+    }
+
+    case 'DOWNVOTE_CONFESSION': {
+      const updatedConfessions = state.confessions.map(c => {
+        if (c.id !== action.payload) return c;
+        const isDown = c.isDownvoted;
+        return {
+          ...c,
+          downvotes: isDown ? Math.max(0, c.downvotes - 1) : c.downvotes + 1,
+          isDownvoted: !isDown,
+          isUpvoted: false,
+        };
+      });
+      if (typeof window !== 'undefined') localStorage.setItem('campussparks_confessions', JSON.stringify(updatedConfessions));
+      return { ...state, confessions: updatedConfessions };
+    }
+
+    case 'DELETE_CONFESSION': {
+      const updatedConfessions = state.confessions.filter(c => c.id !== action.payload);
+      if (typeof window !== 'undefined') localStorage.setItem('campussparks_confessions', JSON.stringify(updatedConfessions));
+      return { ...state, confessions: updatedConfessions };
+    }
 
     // ── Campus Roulette
     case 'START_MATCHING':

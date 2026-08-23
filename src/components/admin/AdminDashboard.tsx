@@ -7,7 +7,7 @@ import { useState, useEffect } from 'react';
 import {
   Shield, X, Trash2, Megaphone, Plus, Search,
   Flame, Users, CheckCircle2,
-  Lock, RefreshCw, Award, Ban, UserCheck,
+  Lock, RefreshCw, Award, Ban, UserCheck, Vote, Ghost
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { SupabaseService } from '../../services/supabaseService';
@@ -15,7 +15,7 @@ import { supabase } from '../../lib/supabase';
 import { POST_CATEGORIES, ANNOUNCEMENT_CATEGORIES } from '../../data/mockData';
 import type { Announcement, PostCategory, AnnouncementCategory, Group } from '../../types';
 
-type AdminTab = 'analytics' | 'moderation' | 'students' | 'broadcast' | 'clubs' | 'safety' | 'system';
+type AdminTab = 'analytics' | 'moderation' | 'polls' | 'confessions' | 'students' | 'broadcast' | 'clubs' | 'safety' | 'system';
 
 export default function AdminDashboard({ onClose }: { onClose: () => void }) {
   const { state, dispatch } = useApp();
@@ -393,6 +393,8 @@ export default function AdminDashboard({ onClose }: { onClose: () => void }) {
           {[
             { id: 'analytics', label: 'Analytics & KPIs', icon: <Flame size={15} /> },
             { id: 'moderation', label: `Moderation (${state.posts.length})`, icon: <Shield size={15} /> },
+            { id: 'polls', label: `Polls (${state.polls.length})`, icon: <Vote size={15} /> },
+            { id: 'confessions', label: `Confessions (${state.confessions.length})`, icon: <Ghost size={15} /> },
             { id: 'students', label: `Students (${studentList.length})`, icon: <Users size={15} /> },
             { id: 'broadcast', label: 'Official Broadcast', icon: <Megaphone size={15} /> },
             { id: 'clubs', label: `Hubs Governance (${state.groups.length})`, icon: <Users size={15} /> },
@@ -568,6 +570,140 @@ export default function AdminDashboard({ onClose }: { onClose: () => void }) {
                   <div className="empty-state-title">No matching posts in moderation queue</div>
                 </div>
               )}
+            </div>
+          )}
+
+          {/* ════════ TAB: POLLS & HOT TAKES GOVERNANCE ════════ */}
+          {activeTab === 'polls' && (
+            <div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+                <div>
+                  <h3 style={{ fontSize: '1.05rem', fontWeight: 700, margin: 0 }}>
+                    Campus Polls & Hot Takes ({state.polls.length})
+                  </h3>
+                  <div style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)', marginTop: 2 }}>
+                    Manage active campus questions, view voting tallies, and remove obsolete polls.
+                  </div>
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                {state.polls.map(poll => (
+                  <div
+                    key={poll.id}
+                    className="card"
+                    style={{ padding: '16px', background: 'var(--bg-secondary)', border: '1px solid var(--border-light)' }}
+                  >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12 }}>
+                      <div>
+                        <div style={{ display: 'flex', gap: 6, alignItems: 'center', marginBottom: 6 }}>
+                          {poll.isHotTake && (
+                            <span className="badge" style={{ background: 'rgba(239, 68, 68, 0.15)', color: '#EF4444', fontSize: '0.68rem', fontWeight: 700 }}>
+                              🔥 HOT TAKE
+                            </span>
+                          )}
+                          <span className="badge" style={{ background: 'var(--bg-tertiary)', fontSize: '0.68rem' }}>
+                            {poll.category}
+                          </span>
+                          <span style={{ fontSize: '0.72rem', color: 'var(--text-tertiary)' }}>
+                            • Total Votes: <strong>{poll.totalVotes}</strong>
+                          </span>
+                        </div>
+                        <h4 style={{ fontSize: '0.95rem', fontWeight: 700, margin: '0 0 6px' }}>{poll.question}</h4>
+                        {poll.description && (
+                          <p style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', margin: '0 0 10px' }}>{poll.description}</p>
+                        )}
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginTop: 8 }}>
+                          {poll.options.map(opt => {
+                            const percent = poll.totalVotes > 0 ? Math.round((opt.votes / poll.totalVotes) * 100) : 0;
+                            return (
+                              <div key={opt.id} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.78rem' }}>
+                                <div style={{ width: 140, color: 'var(--text-secondary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                  {opt.text}
+                                </div>
+                                <div style={{ flex: 1, height: 6, background: 'var(--bg-tertiary)', borderRadius: 3, overflow: 'hidden' }}>
+                                  <div style={{ width: `${percent}%`, height: '100%', background: 'var(--accent)' }} />
+                                </div>
+                                <div style={{ width: 60, textAlign: 'right', fontWeight: 600 }}>{percent}% ({opt.votes})</div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+
+                      <button
+                        className="btn btn-sm btn-ghost"
+                        style={{ color: 'var(--color-error)' }}
+                        onClick={() => {
+                          if (window.confirm('Delete this poll?')) {
+                            dispatch({ type: 'DELETE_POLL', payload: poll.id });
+                          }
+                        }}
+                      >
+                        <Trash2 size={15} /> Delete
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* ════════ TAB: CONFESSIONS & SECRETS MODERATION ════════ */}
+          {activeTab === 'confessions' && (
+            <div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+                <div>
+                  <h3 style={{ fontSize: '1.05rem', fontWeight: 700, margin: 0 }}>
+                    Anonymous Confessions Moderation ({state.confessions.length})
+                  </h3>
+                  <div style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)', marginTop: 2 }}>
+                    Review unfiltered campus confessions and instantly remove inappropriate content.
+                  </div>
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                {state.confessions.map(c => (
+                  <div
+                    key={c.id}
+                    className="card"
+                    style={{ padding: '14px 18px', background: 'var(--bg-secondary)', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 14 }}
+                  >
+                    <div style={{ flex: 1 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+                        <span style={{ fontSize: '1.1rem' }}>{c.emoji}</span>
+                        <span style={{ fontSize: '0.82rem', fontWeight: 700 }}>{c.pseudonym}</span>
+                        <span style={{ fontSize: '0.7rem', color: 'var(--text-tertiary)' }}>
+                          • {new Date(c.createdAt).toLocaleDateString()}
+                        </span>
+                        {c.tags?.map(t => (
+                          <span key={t} className="badge" style={{ fontSize: '0.64rem', background: 'var(--bg-tertiary)' }}>#{t}</span>
+                        ))}
+                      </div>
+                      <p style={{ fontSize: '0.86rem', lineHeight: 1.5, margin: '0 0 8px', color: 'var(--text-primary)' }}>
+                        "{c.content}"
+                      </p>
+                      <div style={{ display: 'flex', gap: 12, fontSize: '0.72rem', color: 'var(--text-tertiary)' }}>
+                        <span>🔥 {c.upvotes} upvotes</span>
+                        <span>💬 {c.commentsCount} replies</span>
+                      </div>
+                    </div>
+
+                    <button
+                      className="btn btn-sm btn-ghost"
+                      style={{ color: 'var(--color-error)' }}
+                      onClick={() => {
+                        if (window.confirm('Delete this confession?')) {
+                          dispatch({ type: 'DELETE_CONFESSION', payload: c.id });
+                        }
+                      }}
+                    >
+                      <Trash2 size={15} /> Remove
+                    </button>
+                  </div>
+                ))}
+              </div>
             </div>
           )}
 
