@@ -40,18 +40,26 @@ interface AppState {
   isLoading: boolean;
 }
 
-const savedUser = typeof window !== 'undefined' ? localStorage.getItem('unipulse_user') : null;
-let parsedUser = null;
-try {
-  if (savedUser) {
-    parsedUser = JSON.parse(savedUser);
-    if (parsedUser && (parsedUser.email?.toLowerCase().includes('guptanilesh417') || parsedUser.displayName?.toLowerCase().includes('guptanilesh417'))) {
-      parsedUser.isAdmin = true;
+const getStoredUser = (): User | null => {
+  if (typeof window === 'undefined') return null;
+  try {
+    const raw = localStorage.getItem('campussparks_session_user') || localStorage.getItem('unipulse_user');
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (parsed) {
+      const isNilesh = parsed.email?.toLowerCase().includes('guptanilesh417') ||
+                       parsed.displayName?.toLowerCase().includes('guptanilesh417') ||
+                       parsed.username?.toLowerCase().includes('guptanilesh417') ||
+                       parsed.isAdmin === true;
+      return { ...parsed, isAdmin: isNilesh };
     }
+    return null;
+  } catch {
+    return null;
   }
-} catch {
-  parsedUser = null;
-}
+};
+
+const parsedUser = getStoredUser();
 
 const savedConvs = typeof window !== 'undefined' ? localStorage.getItem('unipulse_conversations') : null;
 let parsedConvs: DirectConversation[] = [];
@@ -144,12 +152,21 @@ function appReducer(state: AppState, action: Action): AppState {
                            action.payload.username?.toLowerCase().includes('guptanilesh417') ||
                            action.payload.isAdmin === true;
       const user = { ...action.payload, isAdmin: isNileshAdmin };
-      if (typeof window !== 'undefined') localStorage.setItem('unipulse_user', JSON.stringify(user));
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('campussparks_session_user', JSON.stringify(user));
+        localStorage.setItem('unipulse_user', JSON.stringify(user));
+      }
       return { ...state, currentUser: user };
     }
 
     case 'LOGOUT_USER':
-      if (typeof window !== 'undefined') localStorage.removeItem('unipulse_user');
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('campussparks_session_user');
+        localStorage.removeItem('unipulse_user');
+      }
+      try {
+        supabase.auth.signOut().catch(() => {});
+      } catch (_) {}
       return { ...state, currentUser: null, activeMatch: null, activeConversationId: null, selectedGroupId: null };
 
     case 'SET_TAB':
@@ -605,31 +622,79 @@ export function AppProvider({ children }: { children: ReactNode }) {
       dispatch({ type: 'ADD_REALTIME_POST', payload: newPost });
     });
 
-    // Listen for email confirmation link logins
-    const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
-      if ((event === 'SIGNED_IN' || event === 'USER_UPDATED') && session?.user) {
+    // Auto-restore session from Supabase on mount
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
+      if (session?.user) {
+        try {
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('id', session.user.id)
+            .maybeSingle();
+
+          const isNilesh = session.user.email?.toLowerCase().includes('guptanilesh417') ||
+                           profile?.username?.toLowerCase().includes('guptanilesh417');
+
+          dispatch({
+            type: 'LOGIN_USER',
+            payload: {
+              id: session.user.id,
+              username: profile?.username || session.user.user_metadata?.username || session.user.email?.split('@')[0] || 'student',
+              email: session.user.email || profile?.email || '',
+              displayName: profile?.display_name || session.user.user_metadata?.display_name || session.user.email?.split('@')[0] || 'Campus Student',
+              avatar: profile?.avatar || session.user.user_metadata?.avatar || '🎓',
+              major: profile?.major || session.user.user_metadata?.major || 'Computer Science',
+              graduationYear: profile?.graduation_year || session.user.user_metadata?.graduation_year || 2027,
+              college: profile?.college || 'Campus University',
+              bio: profile?.bio || 'Campus student',
+              hobbies: profile?.hobbies || ['Campus Life'],
+              badges: [],
+              isOnline: true,
+              joinedAt: profile?.created_at || session.user.created_at || new Date().toISOString(),
+              pulseScore: profile?.pulse_score || 100,
+              isAdmin: isNilesh,
+              isVerified: true,
+            },
+          });
+        } catch (_) {}
+      }
+    });
+
+    // Listen for auth state changes (Magic link, OTP confirmation, password login, token refresh)
+    const { data: authListener } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (['SIGNED_IN', 'INITIAL_SESSION', 'TOKEN_REFRESHED', 'USER_UPDATED'].includes(event) && session?.user) {
         const u = session.user;
         const isNilesh = u.email?.toLowerCase().includes('guptanilesh417');
-        dispatch({
-          type: 'LOGIN_USER',
-          payload: {
-            id: u.id,
-            username: u.user_metadata?.username || u.email?.split('@')[0] || 'student',
-            email: u.email || '',
-            displayName: u.user_metadata?.display_name || u.email?.split('@')[0] || 'Campus Student',
-            avatar: u.user_metadata?.avatar || '🎓',
-            major: u.user_metadata?.major || 'Computer Science',
-            graduationYear: u.user_metadata?.graduation_year || 2027,
-            college: 'Campus University',
-            bio: u.user_metadata?.bio || 'Campus student',
-            hobbies: u.user_metadata?.hobbies || ['Campus Life'],
-            badges: [],
-            isOnline: true,
-            joinedAt: u.created_at || new Date().toISOString(),
-            pulseScore: 100,
-            isAdmin: isNilesh,
-          },
-        });
+
+        try {
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('id', u.id)
+            .maybeSingle();
+
+          dispatch({
+            type: 'LOGIN_USER',
+            payload: {
+              id: u.id,
+              username: profile?.username || u.user_metadata?.username || u.email?.split('@')[0] || 'student',
+              email: u.email || profile?.email || '',
+              displayName: profile?.display_name || u.user_metadata?.display_name || u.email?.split('@')[0] || 'Campus Student',
+              avatar: profile?.avatar || u.user_metadata?.avatar || '🎓',
+              major: profile?.major || u.user_metadata?.major || 'Computer Science',
+              graduationYear: profile?.graduation_year || u.user_metadata?.graduation_year || 2027,
+              college: profile?.college || 'Campus University',
+              bio: profile?.bio || 'Campus student',
+              hobbies: profile?.hobbies || ['Campus Life'],
+              badges: [],
+              isOnline: true,
+              joinedAt: profile?.created_at || u.created_at || new Date().toISOString(),
+              pulseScore: profile?.pulse_score || 100,
+              isAdmin: isNilesh,
+              isVerified: true,
+            },
+          });
+        } catch (_) {}
       }
     });
 
