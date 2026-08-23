@@ -141,8 +141,9 @@ export default function RandomChat() {
   const [copiedLink, setCopiedLink] = useState(false);
   const [peerRevealRequested, setPeerRevealRequested] = useState(false);
   const [peerIsTyping, setPeerIsTyping] = useState(false);
+  const [actualOnlineCount, setActualOnlineCount] = useState(1);
+  const [registeredUserCount, setRegisteredUserCount] = useState(0);
   const [floatingReactions, setFloatingReactions] = useState<{ id: string; emoji: string; x: number }[]>([]);
-  const [onlineCounter, setOnlineCounter] = useState(148);
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [isSimulatedPeer, setIsSimulatedPeer] = useState(false);
   const [simulatedPeerData, setSimulatedPeerData] = useState<any>(null);
@@ -151,6 +152,7 @@ export default function RandomChat() {
   const chatInputRef = useRef<HTMLInputElement>(null);
   const lobbyChannelRef = useRef<any>(null);
   const roomChannelRef = useRef<any>(null);
+  const presenceChannelRef = useRef<any>(null);
   const heartbeatIntervalRef = useRef<any>(null);
   const fallbackTimerRef = useRef<any>(null);
   const typingTimeoutRef = useRef<any>(null);
@@ -171,20 +173,68 @@ export default function RandomChat() {
     scrollToBottom();
   }, [activeMatch?.messages, peerIsTyping, scrollToBottom]);
 
-  // Rotate tips & randomize live active student count
+  // Fetch actual registered profile count from database & track live Realtime Presence
+  useEffect(() => {
+    const fetchRegisteredCount = async () => {
+      try {
+        const { count, error } = await supabase
+          .from('profiles')
+          .select('id', { count: 'exact', head: true });
+        if (!error && typeof count === 'number') {
+          setRegisteredUserCount(count);
+        }
+      } catch (err) {
+        console.warn('Profiles count fetch notice:', err);
+      }
+    };
+    fetchRegisteredCount();
+
+    // Track actual live online presence across students
+    const presenceChannel = supabase.channel('campus_online_presence', {
+      config: { presence: { key: mySessionId } },
+    });
+
+    const updatePresenceCount = () => {
+      const presState = presenceChannel.presenceState();
+      const count = Object.keys(presState).length;
+      setActualOnlineCount(Math.max(1, count));
+    };
+
+    presenceChannel
+      .on('presence', { event: 'sync' }, updatePresenceCount)
+      .on('presence', { event: 'join' }, updatePresenceCount)
+      .on('presence', { event: 'leave' }, updatePresenceCount)
+      .subscribe(async (status: string) => {
+        if (status === 'SUBSCRIBED') {
+          try {
+            await presenceChannel.track({
+              user_id: me?.id || mySessionId,
+              name: me?.displayName || myAnonProfile.name,
+              joined_at: new Date().toISOString(),
+            });
+          } catch (_) {}
+        }
+      });
+
+    presenceChannelRef.current = presenceChannel;
+
+    return () => {
+      if (presenceChannelRef.current) {
+        supabase.removeChannel(presenceChannelRef.current);
+        presenceChannelRef.current = null;
+      }
+    };
+  }, [mySessionId, me?.id, me?.displayName, myAnonProfile.name]);
+
+  // Rotate tips
   useEffect(() => {
     if (!activeMatch || activeMatch.status !== 'searching') return;
     const tipInterval = setInterval(() => {
       setTipIndex(prev => (prev + 1) % SEARCHING_TIPS.length);
     }, 2800);
 
-    const countInterval = setInterval(() => {
-      setOnlineCounter(prev => prev + (Math.random() > 0.5 ? 1 : -1));
-    }, 4000);
-
     return () => {
       clearInterval(tipInterval);
-      clearInterval(countInterval);
     };
   }, [activeMatch?.status]);
 
@@ -749,8 +799,10 @@ export default function RandomChat() {
             <span className={`roulette-status-dot ${isSearching ? 'pulsing' : ''}`} />
             <span>
               {isSearching
-                ? `${onlineCounter} Students Online & Active`
-                : '100% Anonymous • Zero Profile Sharing'}
+                ? actualOnlineCount === 1
+                  ? `1 Student in Lobby (You)${registeredUserCount > 0 ? ` • ${registeredUserCount} Verified on Campus` : ''}`
+                  : `${actualOnlineCount} Students Online in Lobby${registeredUserCount > 0 ? ` • ${registeredUserCount} Verified` : ''}`
+                : `${actualOnlineCount} Student${actualOnlineCount === 1 ? ' (You)' : 's'} Online Live • 100% Anonymous`}
             </span>
           </div>
 
