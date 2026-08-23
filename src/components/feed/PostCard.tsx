@@ -62,7 +62,13 @@ export default function PostCard({ post, style }: PostCardProps) {
   };
 
   const handleShare = () => {
-    navigator.clipboard.writeText(window.location.origin);
+    try {
+      if (navigator.clipboard?.writeText) {
+        navigator.clipboard.writeText(window.location.origin);
+      }
+    } catch (err) {
+      console.warn('Clipboard copy notice:', err);
+    }
     setCopiedLink(true);
     setTimeout(() => setCopiedLink(false), 2000);
   };

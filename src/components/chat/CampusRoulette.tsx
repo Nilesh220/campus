@@ -387,7 +387,13 @@ export default function RandomChat() {
   };
 
   const handleCopyInviteLink = () => {
-    navigator.clipboard.writeText(window.location.origin);
+    try {
+      if (navigator.clipboard?.writeText) {
+        navigator.clipboard.writeText(window.location.origin);
+      }
+    } catch (err) {
+      console.warn('Clipboard copy notice:', err);
+    }
     setCopiedLink(true);
     setTimeout(() => setCopiedLink(false), 2500);
   };
