@@ -1,14 +1,20 @@
+// ============================================================
+// Random Student Chat — Supabase Realtime Live Matchmaking
+// Connects real students across devices & browsers in real-time!
+// ============================================================
+
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { Send, Sparkles, UserPlus, SkipForward, X, Zap, Shield, MessageSquareQuote, RotateCcw } from 'lucide-react';
+import { Send, Sparkles, UserPlus, SkipForward, X, Zap, Shield, MessageSquareQuote, RotateCcw, Copy, Check } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
-import { INTEREST_TAGS, ICEBREAKERS, CURRENT_USER } from '../../data/mockData';
-import type { ChatMessage } from '../../types';
+import { INTEREST_TAGS, ICEBREAKERS, CURRENT_USER, generateAnonName } from '../../data/mockData';
+import { supabase, isSupabaseConfigured } from '../../lib/supabase';
+import type { ChatMessage, AnonMatch } from '../../types';
 
 const SEARCHING_TIPS = [
   'Searching through active campus dorms & departments...',
-  'Tip: You can select interest tags above to match by common vibe.',
+  'Tip: Select interest tags above to match by common vibe.',
   'Your identity stays 100% anonymous until both sides agree to reveal.',
-  'Waiting for a live campus student to connect...',
+  'Realtime WebSocket connection active — waiting for peer...',
 ];
 
 const QUICK_STARTERS = [
@@ -25,7 +31,16 @@ export default function RandomChat() {
   const [chatInput, setChatInput] = useState('');
   const [showRevealModal, setShowRevealModal] = useState(false);
   const [tipIndex, setTipIndex] = useState(0);
+  const [copiedLink, setCopiedLink] = useState(false);
+  const [peerRevealRequested, setPeerRevealRequested] = useState(false);
+
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const lobbyChannelRef = useRef<any>(null);
+  const roomChannelRef = useRef<any>(null);
+  const myAnonProfileRef = useRef<{ name: string; emoji: string } | null>(null);
+
+  const me = state.currentUser || CURRENT_USER;
+  const myUserId = useRef(me.id || `anon_${Date.now()}_${Math.random().toString(36).substring(2, 5)}`).current;
 
   const scrollToBottom = useCallback(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -51,12 +66,189 @@ export default function RandomChat() {
     );
   };
 
-  // ── Matchmaking Logic (Realtime Student Matching — Zero Bots) ──────
-  const handleStartMatch = () => {
+  // ── Dedicated Room Channel ────────────────────────────────────
+  const joinRoomChannel = useCallback((roomId: string, peerId: string, peerPseudonym: string, peerEmoji: string, interestTags: string[]) => {
+    if (roomChannelRef.current) {
+      supabase.removeChannel(roomChannelRef.current);
+    }
+
+    const matchData: AnonMatch = {
+      id: roomId,
+      peerId,
+      peerPseudonym,
+      peerEmoji,
+      matchedAt: new Date().toISOString(),
+      interestTags,
+      messages: [
+        {
+          id: `sys_${Date.now()}`,
+          senderId: 'system',
+          content: `🎉 You are connected with ${peerPseudonym}! Everything is encrypted and private. Say hi! ✨`,
+          timestamp: new Date().toISOString(),
+          type: 'system',
+        },
+      ],
+      status: 'chatting',
+      revealRequestSent: false,
+      revealRequestReceived: false,
+    };
+
+    dispatch({ type: 'MATCH_FOUND', payload: matchData });
+
+    const room = supabase.channel(roomId);
+    roomChannelRef.current = room;
+
+    room
+      .on('broadcast', { event: 'CHAT_MSG' }, ({ payload }) => {
+        if (payload.senderId !== myUserId) {
+          dispatch({ type: 'RECEIVE_CHAT_MESSAGE', payload });
+        }
+      })
+      .on('broadcast', { event: 'ICEBREAKER' }, ({ payload }) => {
+        dispatch({ type: 'RECEIVE_CHAT_MESSAGE', payload });
+      })
+      .on('broadcast', { event: 'REVEAL_REQ' }, ({ payload }) => {
+        if (payload.senderId !== myUserId) {
+          setPeerRevealRequested(true);
+        }
+      })
+      .on('broadcast', { event: 'REVEAL_ACCEPT' }, () => {
+        dispatch({ type: 'ACCEPT_REVEAL' });
+      })
+      .on('broadcast', { event: 'PEER_LEFT' }, ({ payload }) => {
+        if (payload.senderId !== myUserId) {
+          const sysMsg: ChatMessage = {
+            id: `left_${Date.now()}`,
+            senderId: 'system',
+            content: `👋 ${peerPseudonym} left the chat session.`,
+            timestamp: new Date().toISOString(),
+            type: 'system',
+          };
+          dispatch({ type: 'RECEIVE_CHAT_MESSAGE', payload: sysMsg });
+        }
+      })
+      .subscribe();
+  }, [myUserId, dispatch]);
+
+  // ── Matchmaking Engine ────────────────────────────────────────
+  const handleStartMatch = useCallback(() => {
+    if (!myAnonProfileRef.current) {
+      myAnonProfileRef.current = generateAnonName();
+    }
+    const myAnon = myAnonProfileRef.current;
+
     dispatch({ type: 'START_MATCHING' });
-  };
+    setPeerRevealRequested(false);
+
+    if (!isSupabaseConfigured) {
+      console.warn('Supabase not configured for realtime roulette matchmaking');
+      return;
+    }
+
+    // Cleanup previous lobby channel
+    if (lobbyChannelRef.current) {
+      supabase.removeChannel(lobbyChannelRef.current);
+    }
+    if (roomChannelRef.current) {
+      supabase.removeChannel(roomChannelRef.current);
+      roomChannelRef.current = null;
+    }
+
+    const lobby = supabase.channel('campus_roulette_lobby', {
+      config: { presence: { key: myUserId } },
+    });
+
+    lobbyChannelRef.current = lobby;
+
+    // Presence tracking & coordinator matching
+    lobby
+      .on('presence', { event: 'sync' }, () => {
+        const stateObj = lobby.presenceState();
+        const searchers: any[] = [];
+
+        Object.keys(stateObj).forEach(key => {
+          const presences = stateObj[key] as any[];
+          if (presences && presences.length > 0) {
+            searchers.push(presences[0]);
+          }
+        });
+
+        // Find other searchers excluding ourselves
+        const otherSearchers = searchers.filter(s => s.userId !== myUserId);
+
+        if (otherSearchers.length > 0) {
+          // Sort to pick deterministic peer
+          const peer = otherSearchers[0];
+
+          // Coordinator pattern: whoever has lower userId coordinates the room creation
+          if (myUserId < peer.userId) {
+            const roomId = `roulette_room_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
+            
+            lobby.send({
+              type: 'broadcast',
+              event: 'MATCH_COORDINATED',
+              payload: {
+                userA: myUserId,
+                userB: peer.userId,
+                roomId,
+                userAPseudonym: myAnon.name,
+                userAEmoji: myAnon.emoji,
+                userBPseudonym: peer.pseudonym,
+                userBEmoji: peer.emoji,
+                interests: selectedInterests,
+              },
+            });
+          }
+        }
+      })
+      .on('broadcast', { event: 'MATCH_COORDINATED' }, ({ payload }) => {
+        if (payload.userA === myUserId || payload.userB === myUserId) {
+          const isUserA = payload.userA === myUserId;
+          const peerId = isUserA ? payload.userB : payload.userA;
+          const peerPseudonym = isUserA ? payload.userBPseudonym : payload.userAPseudonym;
+          const peerEmoji = isUserA ? payload.userBEmoji : payload.userAEmoji;
+          const roomId = payload.roomId;
+
+          // Untrack from lobby and join room
+          lobby.untrack();
+          supabase.removeChannel(lobby);
+          lobbyChannelRef.current = null;
+
+          // Join dedicated room channel
+          joinRoomChannel(roomId, peerId, peerPseudonym, peerEmoji, payload.interests || []);
+        }
+      })
+      .subscribe(async status => {
+        if (status === 'SUBSCRIBED') {
+          await lobby.track({
+            userId: myUserId,
+            pseudonym: myAnon.name,
+            emoji: myAnon.emoji,
+            interests: selectedInterests,
+            joinedAt: Date.now(),
+          });
+        }
+      });
+  }, [myUserId, selectedInterests, dispatch, joinRoomChannel]);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (lobbyChannelRef.current) {
+        supabase.removeChannel(lobbyChannelRef.current);
+      }
+      if (roomChannelRef.current) {
+        supabase.removeChannel(roomChannelRef.current);
+      }
+    };
+  }, []);
 
   const handleCancelSearch = () => {
+    if (lobbyChannelRef.current) {
+      lobbyChannelRef.current.untrack();
+      supabase.removeChannel(lobbyChannelRef.current);
+      lobbyChannelRef.current = null;
+    }
     dispatch({ type: 'END_CHAT' });
   };
 
@@ -64,13 +256,60 @@ export default function RandomChat() {
     const text = textToSend || chatInput;
     if (!text.trim() || !activeMatch) return;
 
-    dispatch({ type: 'SEND_CHAT_MESSAGE', payload: text });
+    const msg: ChatMessage = {
+      id: `msg_${Date.now()}`,
+      senderId: myUserId,
+      content: text.trim(),
+      timestamp: new Date().toISOString(),
+      type: 'text',
+    };
+
+    dispatch({ type: 'SEND_CHAT_MESSAGE', payload: text.trim() });
+
+    if (roomChannelRef.current) {
+      roomChannelRef.current.send({
+        type: 'broadcast',
+        event: 'CHAT_MSG',
+        payload: msg,
+      });
+    }
+
     if (!textToSend) setChatInput('');
   };
 
   const handleReveal = () => {
     dispatch({ type: 'SEND_REVEAL_REQUEST' });
     setShowRevealModal(false);
+
+    if (roomChannelRef.current) {
+      roomChannelRef.current.send({
+        type: 'broadcast',
+        event: 'REVEAL_REQ',
+        payload: {
+          senderId: myUserId,
+          profile: {
+            id: me.id,
+            displayName: me.displayName,
+            avatar: me.avatar,
+            major: me.major,
+            username: me.username,
+          },
+        },
+      });
+    }
+  };
+
+  const handleAcceptPeerReveal = () => {
+    dispatch({ type: 'ACCEPT_REVEAL' });
+    setPeerRevealRequested(false);
+
+    if (roomChannelRef.current) {
+      roomChannelRef.current.send({
+        type: 'broadcast',
+        event: 'REVEAL_ACCEPT',
+        payload: { senderId: myUserId },
+      });
+    }
   };
 
   const handleNewIcebreaker = () => {
@@ -84,11 +323,34 @@ export default function RandomChat() {
       isIcebreaker: true,
     };
     dispatch({ type: 'RECEIVE_CHAT_MESSAGE', payload: msg });
+
+    if (roomChannelRef.current) {
+      roomChannelRef.current.send({
+        type: 'broadcast',
+        event: 'ICEBREAKER',
+        payload: msg,
+      });
+    }
   };
 
   const handleSkip = () => {
+    if (roomChannelRef.current) {
+      roomChannelRef.current.send({
+        type: 'broadcast',
+        event: 'PEER_LEFT',
+        payload: { senderId: myUserId },
+      });
+      supabase.removeChannel(roomChannelRef.current);
+      roomChannelRef.current = null;
+    }
     dispatch({ type: 'SKIP_MATCH' });
     handleStartMatch();
+  };
+
+  const handleCopyInviteLink = () => {
+    navigator.clipboard.writeText(window.location.origin);
+    setCopiedLink(true);
+    setTimeout(() => setCopiedLink(false), 2500);
   };
 
   // ── Idle / Search State ─────────────────────────────────
@@ -101,7 +363,7 @@ export default function RandomChat() {
           {/* Status Header Badge */}
           <div className="match-badge-pill">
             <span className="dot" />
-            <span>{isSearching ? 'Live Campus Matchmaking' : '100% Anonymous & Ephemeral'}</span>
+            <span>{isSearching ? 'Live Supabase Matchmaking Active' : '100% Anonymous & Ephemeral'}</span>
           </div>
 
           {/* Radar Animation Area */}
@@ -128,28 +390,28 @@ export default function RandomChat() {
           </div>
 
           <h1 className="match-title">
-            {isSearching ? 'Connecting with a peer...' : 'Random Student Chat'}
+            {isSearching ? 'Searching for a classmate...' : 'Random Student Chat'}
           </h1>
           <p className="match-subtitle">
             {isSearching
               ? SEARCHING_TIPS[tipIndex]
-              : 'Chat 1-on-1 anonymously with fellow students across campus. Zero personal data shared unless you both choose to reveal your profiles.'}
+              : 'Chat 1-on-1 anonymously in real-time with fellow students across campus. Zero personal data shared unless you both agree to reveal.'}
           </p>
 
           {/* Live Activity Row */}
           <div className="match-stats-row">
             <div className="match-stat-item">
-              <span className="match-stat-num">Active</span>
-              <span className="match-stat-lbl">Campus Rooms</span>
+              <span className="match-stat-num">Realtime</span>
+              <span className="match-stat-lbl">WebSocket Sync</span>
             </div>
             <div className="match-stat-divider" />
             <div className="match-stat-item">
-              <span className="match-stat-num">&lt; 5s</span>
-              <span className="match-stat-lbl">Instant Match</span>
+              <span className="match-stat-num">1-to-1</span>
+              <span className="match-stat-lbl">Private Pairing</span>
             </div>
             <div className="match-stat-divider" />
             <div className="match-stat-item">
-              <span className="match-stat-num">Private</span>
+              <span className="match-stat-num">Zero Log</span>
               <span className="match-stat-lbl">Auto-Deletes</span>
             </div>
           </div>
@@ -190,15 +452,22 @@ export default function RandomChat() {
 
               <div className="match-safety-note">
                 <Shield size={14} />
-                <span>Encrypted session. Be respectful to fellow students.</span>
+                <span>Encrypted live session. Be respectful to fellow students.</span>
               </div>
             </div>
           ) : (
-            <div className="match-searching-controls">
-              <button className="btn btn-secondary btn-pill" onClick={handleCancelSearch}>
-                <RotateCcw size={16} />
-                Cancel
-              </button>
+            <div className="match-searching-controls" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14 }}>
+              <div style={{ display: 'flex', gap: 10 }}>
+                <button className="btn btn-secondary btn-pill" onClick={handleCancelSearch}>
+                  <RotateCcw size={16} /> Cancel
+                </button>
+                <button className="btn btn-primary btn-pill" onClick={handleCopyInviteLink}>
+                  {copiedLink ? <><Check size={16} /> Link Copied!</> : <><Copy size={16} /> Invite Friend</>}
+                </button>
+              </div>
+              <p style={{ fontSize: '0.78rem', color: 'var(--text-tertiary)', margin: 0 }}>
+                💡 Share the link with your friend — when both click "Start Random Chat", you connect instantly!
+              </p>
             </div>
           )}
         </div>
@@ -256,9 +525,9 @@ export default function RandomChat() {
             <div>
               <div className="chat-pseudonym">
                 {activeMatch.peerPseudonym}
-                <span className="chat-anon-tag">Anonymous</span>
+                <span className="chat-anon-tag">Live Peer</span>
               </div>
-              <div className="chat-pseudonym-sub">Random 1-on-1 Session</div>
+              <div className="chat-pseudonym-sub">● Realtime WebSocket Connected</div>
             </div>
           </div>
           <div className="chat-actions">
@@ -287,7 +556,18 @@ export default function RandomChat() {
             </button>
             <button
               className="icon-btn"
-              onClick={() => dispatch({ type: 'END_CHAT' })}
+              onClick={() => {
+                if (roomChannelRef.current) {
+                  roomChannelRef.current.send({
+                    type: 'broadcast',
+                    event: 'PEER_LEFT',
+                    payload: { senderId: myUserId },
+                  });
+                  supabase.removeChannel(roomChannelRef.current);
+                  roomChannelRef.current = null;
+                }
+                dispatch({ type: 'END_CHAT' });
+              }}
               title="Leave chat"
             >
               <X size={18} />
@@ -295,11 +575,30 @@ export default function RandomChat() {
           </div>
         </div>
 
+        {/* Incoming Reveal Request Banner */}
+        {peerRevealRequested && (
+          <div style={{
+            padding: '10px 16px',
+            background: 'var(--accent-bg-strong)',
+            borderBottom: '1px solid var(--accent)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: 10,
+          }}>
+            <div style={{ fontSize: '0.82rem', color: 'var(--text-primary)' }}>
+              ✨ <strong>{activeMatch.peerPseudonym}</strong> wants to reveal profiles!
+            </div>
+            <button className="btn btn-sm btn-primary btn-pill" onClick={handleAcceptPeerReveal}>
+              Accept & Reveal
+            </button>
+          </div>
+        )}
+
         {/* Messages Feed */}
         <div className="chat-messages">
           {activeMatch.messages.map(msg => {
-            const me = state.currentUser || CURRENT_USER;
-            const isSentByMe = msg.senderId === me.id;
+            const isSentByMe = msg.senderId === myUserId || msg.senderId === me.id;
             return (
               <div
                 key={msg.id}
@@ -324,7 +623,6 @@ export default function RandomChat() {
             );
           })}
 
-          {/* Messages Feed */}
           <div ref={messagesEndRef} />
         </div>
 
@@ -403,7 +701,7 @@ export default function RandomChat() {
                   <UserPlus size={16} />
                   <div style={{ textAlign: 'left' }}>
                     <div style={{ fontSize: '0.85rem', fontWeight: 700 }}>Reveal Full Profiles</div>
-                    <div style={{ fontSize: '0.68rem', opacity: 0.85 }}>Exchange real names ({(state.currentUser || CURRENT_USER).displayName}) & college profiles</div>
+                    <div style={{ fontSize: '0.68rem', opacity: 0.85 }}>Exchange real names ({me.displayName}) & college profiles</div>
                   </div>
                 </button>
 
