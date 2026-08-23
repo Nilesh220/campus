@@ -23,7 +23,7 @@ export default function UserProfileModal() {
     <div className="modal-overlay" onClick={() => dispatch({ type: 'TOGGLE_PROFILE', payload: null })}>
       <div className="modal" style={{ maxWidth: 420, padding: 0, overflow: 'hidden' }} onClick={e => e.stopPropagation()}>
         {/* Header BG */}
-        <div className="profile-header-bg" style={{ background: 'linear-gradient(135deg, #C4956A 0%, #A78BCA 100%)', height: 100 }} />
+        <div className="profile-header-bg" style={{ background: 'var(--bg-tertiary)', borderBottom: '1px solid var(--border-light)', height: 80 }} />
 
         <div className="profile-modal-content" style={{ padding: '0 24px 24px' }}>
           {/* Avatar */}

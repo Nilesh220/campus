@@ -61,7 +61,7 @@ export default function GroupsPage() {
         </div>
 
         {/* Hero Card */}
-        <div className="group-hero-banner" style={{ background: group.coverGradient }}>
+        <div className="group-hero-banner">
           <div className="group-hero-icon">
             <Users size={24} />
           </div>
@@ -181,7 +181,7 @@ export default function GroupsPage() {
               className="group-card-modern"
               onClick={() => dispatch({ type: 'SELECT_GROUP', payload: group.id })}
             >
-              <div className="group-card-cover" style={{ background: group.coverGradient }}>
+              <div className="group-card-cover">
                 <Users size={24} />
               </div>
               <div className="group-card-body">

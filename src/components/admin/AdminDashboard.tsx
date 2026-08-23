@@ -193,12 +193,11 @@ export default function AdminDashboard({ onClose }: { onClose: () => void }) {
               width: 44,
               height: 44,
               borderRadius: 'var(--radius-md)',
-              background: 'linear-gradient(135deg, #C4956A 0%, #A78BCA 100%)',
-              color: '#fff',
+              background: 'var(--accent-bg-strong)',
+              color: 'var(--accent)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              boxShadow: 'var(--shadow-sm)',
             }}>
               <Shield size={22} />
             </div>
