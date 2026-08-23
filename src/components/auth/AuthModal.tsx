@@ -397,9 +397,9 @@ export default function AuthModal({ initialMode = 'signup', onClose, onSuccess }
           {mode === 'signup' ? (
             <>
               {/* Avatar Picker */}
-              <div className="form-group" style={{ marginBottom: 12 }}>
+              <div className="form-group" style={{ marginBottom: 10 }}>
                 <label className="form-label" style={{ fontSize: '0.74rem' }}>Choose Avatar</label>
-                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                <div style={{ display: 'flex', gap: 6, overflowX: 'auto', paddingBottom: 4, scrollbarWidth: 'none' }}>
                   {AVATARS.map(av => (
                     <button
                       key={av}
@@ -407,11 +407,12 @@ export default function AuthModal({ initialMode = 'signup', onClose, onSuccess }
                       onClick={() => setAvatar(av)}
                       style={{
                         fontSize: '1.2rem',
-                        padding: '4px 8px',
+                        padding: '4px 10px',
                         borderRadius: 'var(--radius-sm)',
                         background: avatar === av ? 'var(--accent-bg-strong)' : 'var(--bg-tertiary)',
                         border: avatar === av ? '1.5px solid var(--accent)' : '1px solid var(--border-light)',
                         cursor: 'pointer',
+                        flexShrink: 0,
                       }}
                     >
                       {av}
@@ -421,7 +422,7 @@ export default function AuthModal({ initialMode = 'signup', onClose, onSuccess }
               </div>
 
               {/* Display Name & Username */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 12 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 10 }}>
                 <div className="form-group" style={{ marginBottom: 0 }}>
                   <label className="form-label" style={{ fontSize: '0.74rem' }}>Display Name</label>
                   <div className="auth-input-wrapper">
@@ -429,7 +430,7 @@ export default function AuthModal({ initialMode = 'signup', onClose, onSuccess }
                     <input
                       type="text"
                       required
-                      placeholder="e.g. Arjun Sharma"
+                      placeholder="Full Name"
                       value={displayName}
                       onChange={e => setDisplayName(e.target.value)}
                     />
@@ -462,7 +463,7 @@ export default function AuthModal({ initialMode = 'signup', onClose, onSuccess }
               </div>
 
               {/* Student Email */}
-              <div className="form-group" style={{ marginBottom: 12 }}>
+              <div className="form-group" style={{ marginBottom: 10 }}>
                 <label className="form-label" style={{ fontSize: '0.74rem' }}>
                   Student / University Email
                 </label>
@@ -471,7 +472,7 @@ export default function AuthModal({ initialMode = 'signup', onClose, onSuccess }
                   <input
                     type="email"
                     required
-                    placeholder="student@university.edu or name@gmail.com"
+                    placeholder="student@university.edu"
                     value={email}
                     onChange={e => setEmail(e.target.value)}
                   />
