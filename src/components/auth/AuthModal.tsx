@@ -1,15 +1,14 @@
 // ============================================================
-// Auth Modal — Sign In & Student Registration with Resend OTP
-// 6-Digit Instant Email Verification Flow & Supabase Auth Sync
+// Auth Modal — Direct Instant Email & Password Authentication
+// Pure 1-Click Signup / Signin with Supabase & Local Sync
 // ============================================================
 
-import { useState, useRef } from 'react';
+import { useState } from 'react';
 import {
   Sparkles, ArrowRight, Mail, Lock, User, X,
-  AtSign, Dices, RotateCcw, AlertCircle, Check, ShieldCheck, KeyRound
+  AtSign, Dices, AlertCircle
 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
-import { EmailService } from '../../services/emailService';
 import { CURRENT_USER, generateGenZUsername } from '../../data/mockData';
 
 const AVATARS = ['🎓', '👨‍💻', '🎨', '🎵', '⚡', '🤖', '📸', '🏋️', '🔬', '💡', '👾', '✨'];
@@ -30,56 +29,22 @@ interface AuthModalProps {
 
 export default function AuthModal({ initialMode = 'signup', onClose, onSuccess }: AuthModalProps) {
   const [mode, setMode] = useState<'signin' | 'signup'>(initialMode);
-  const [view, setView] = useState<'form' | 'otp-verify'>('form');
-  
-  // OTP state
-  const [otpDigits, setOtpDigits] = useState<string[]>(['', '', '', '', '', '']);
-  const [activeOtp, setActiveOtp] = useState('');
-  const [otpError, setOtpError] = useState<string | null>(null);
-  const [resendCooldown, setResendCooldown] = useState(0);
-  const [resendSuccess, setResendSuccess] = useState(false);
-  const otpInputsRef = useRef<(HTMLInputElement | null)[]>([]);
-
-  // Registration state
-  const [emailOrUsername, setEmailOrUsername] = useState('');
-  const [username, setUsername] = useState(() => generateGenZUsername());
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [displayName, setDisplayName] = useState('');
-  const [major, setMajor] = useState(MAJORS[0]);
-  const [gradYear, setGradYear] = useState('2027');
-  const [avatar, setAvatar] = useState('🎓');
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  // Cached user object during OTP stage
-  const [pendingUser, setPendingUser] = useState<any>(null);
+  // Form Fields
+  const [displayName, setDisplayName] = useState('');
+  const [username, setUsername] = useState('');
+  const [email, setEmail] = useState('');
+  const [emailOrUsername, setEmailOrUsername] = useState('');
+  const [password, setPassword] = useState('');
+  const [major, setMajor] = useState(MAJORS[0]);
+  const [gradYear, setGradYear] = useState('2027');
+  const [avatar, setAvatar] = useState(AVATARS[0]);
 
+  // Username generator
   const handleShuffleUsername = () => {
     setUsername(generateGenZUsername(displayName));
-  };
-
-  // Generate & Dispatch Resend OTP Code
-  const sendNewOtp = async (targetEmail: string, name: string) => {
-    const code = Math.floor(100000 + Math.random() * 900000).toString();
-    setActiveOtp(code);
-    setResendSuccess(true);
-    setResendCooldown(45);
-    setOtpError(null);
-
-    // Call Resend email API
-    await EmailService.sendVerificationCode(targetEmail, code, name);
-
-    // Cooldown countdown
-    const timer = setInterval(() => {
-      setResendCooldown(prev => {
-        if (prev <= 1) {
-          clearInterval(timer);
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
   };
 
   const handleAuth = async (e: React.FormEvent) => {
@@ -90,10 +55,10 @@ export default function AuthModal({ initialMode = 'signup', onClose, onSuccess }
     const inputVal = (mode === 'signup' ? email : emailOrUsername).trim().toLowerCase();
     const cleanUsername = (username.trim() || generateGenZUsername(displayName)).replace(/^@/, '').toLowerCase();
 
-    // 1. Strict Email Format Validation
+    // 1. Strict Validation
     if (mode === 'signup') {
       if (!EMAIL_REGEX.test(inputVal)) {
-        setErrorMsg('Please enter a valid email address with a domain (e.g. name@campus.edu or name@gmail.com)');
+        setErrorMsg('Please enter a valid email (e.g. student@campus.edu or name@gmail.com)');
         setLoading(false);
         return;
       }
@@ -117,6 +82,7 @@ export default function AuthModal({ initialMode = 'signup', onClose, onSuccess }
 
     try {
       if (mode === 'signup') {
+        // Direct Signup with Email & Password
         const userObj = {
           id: `u_${Date.now()}`,
           username: finalUsername,
@@ -135,29 +101,47 @@ export default function AuthModal({ initialMode = 'signup', onClose, onSuccess }
           isAdmin: isNilesh,
         };
 
-        setPendingUser(userObj);
-
-        // Send OTP verification email via Resend
-        await sendNewOtp(resolvedEmail, displayName.trim() || finalUsername);
-
-        // Also initiate Supabase Auth
-        supabase.auth.signUp({
-          email: resolvedEmail,
-          password,
-          options: {
-            data: {
-              display_name: displayName.trim() || finalUsername,
-              username: finalUsername,
-              major,
-              graduation_year: parseInt(gradYear),
-              avatar,
+        // Sync with Supabase Auth
+        try {
+          await supabase.auth.signUp({
+            email: resolvedEmail,
+            password,
+            options: {
+              data: {
+                display_name: displayName.trim() || finalUsername,
+                username: finalUsername,
+                major,
+                graduation_year: parseInt(gradYear),
+                avatar,
+              },
             },
-          },
-        }).catch(err => console.warn('Supabase auth notice:', err));
+          });
+        } catch (authErr) {
+          console.warn('Supabase auth notice:', authErr);
+        }
 
-        setView('otp-verify');
+        // Sync to Supabase profiles table
+        try {
+          await supabase.from('profiles').insert({
+            id: userObj.id,
+            username: userObj.username,
+            display_name: userObj.displayName,
+            avatar: userObj.avatar,
+            major: userObj.major,
+            graduation_year: userObj.graduationYear,
+            college: userObj.college,
+            bio: userObj.bio,
+            pulse_score: 100,
+            is_online: true,
+          });
+        } catch (profileErr) {
+          console.warn('Supabase profile sync notice:', profileErr);
+        }
+
+        // Instant successful registration!
+        onSuccess(userObj);
       } else {
-        // Sign In
+        // Direct Sign In with Email & Password
         const { data, error } = await supabase.auth.signInWithPassword({
           email: resolvedEmail,
           password,
@@ -167,7 +151,7 @@ export default function AuthModal({ initialMode = 'signup', onClose, onSuccess }
           if (error.message.toLowerCase().includes('invalid login credentials')) {
             setErrorMsg('Invalid email or password. Please check and try again.');
           } else {
-            // Local fallback signin
+            // Local signin fallback
             onSuccess({
               ...CURRENT_USER,
               username: finalUsername,
@@ -203,42 +187,6 @@ export default function AuthModal({ initialMode = 'signup', onClose, onSuccess }
     }
   };
 
-  // Handle OTP digit changes
-  const handleOtpChange = (index: number, val: string) => {
-    const clean = val.replace(/[^0-9]/g, '');
-    const newDigits = [...otpDigits];
-    newDigits[index] = clean.slice(-1);
-    setOtpDigits(newDigits);
-    setOtpError(null);
-
-    // Auto-focus next input
-    if (clean && index < 5) {
-      otpInputsRef.current[index + 1]?.focus();
-    }
-
-    // Auto-verify when 6 digits are complete
-    const fullCode = newDigits.join('');
-    if (fullCode.length === 6) {
-      verifyOtpCode(fullCode);
-    }
-  };
-
-  const handleOtpKeyDown = (index: number, e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Backspace' && !otpDigits[index] && index > 0) {
-      otpInputsRef.current[index - 1]?.focus();
-    }
-  };
-
-  const verifyOtpCode = (enteredCode: string) => {
-    if (enteredCode === activeOtp || ['123456', '000000', '777777', '999999'].includes(enteredCode)) {
-      if (pendingUser) {
-        onSuccess(pendingUser);
-      }
-    } else {
-      setOtpError('Invalid verification code. Please check your email or use test code 123456.');
-    }
-  };
-
   const handleGuestEntry = () => {
     onSuccess({
       id: 'demo_guest_1',
@@ -259,99 +207,6 @@ export default function AuthModal({ initialMode = 'signup', onClose, onSuccess }
     });
   };
 
-  // ── 6-Digit OTP Verification Screen ───────────────────────────
-  if (view === 'otp-verify') {
-    return (
-      <div className="modal-overlay" onClick={onClose}>
-        <div className="modal auth-card" style={{ maxWidth: 460, textAlign: 'center', padding: 28 }} onClick={e => e.stopPropagation()}>
-          <div style={{ width: 64, height: 64, borderRadius: '50%', background: 'var(--accent-bg-strong)', color: 'var(--accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
-            <KeyRound size={32} />
-          </div>
-
-          <h2 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--text-primary)', marginBottom: 8 }}>
-            Enter Verification Code
-          </h2>
-
-          <p style={{ fontSize: '0.86rem', color: 'var(--text-secondary)', lineHeight: 1.5, marginBottom: 12 }}>
-            We've sent a 6-digit confirmation code to:<br />
-            <strong style={{ color: 'var(--text-primary)', fontSize: '0.92rem' }}>{pendingUser?.email}</strong>
-          </p>
-
-          <div style={{ marginBottom: 16, fontSize: '0.78rem', color: 'var(--text-tertiary)' }}>
-            Delay in inbox? <button type="button" onClick={() => { setOtpDigits(['1','2','3','4','5','6']); verifyOtpCode('123456'); }} style={{ background: 'none', border: 'none', color: 'var(--accent)', fontWeight: 700, cursor: 'pointer', textDecoration: 'underline', padding: 0 }}>Tap here to verify with code 123456</button>
-          </div>
-
-          {/* 6 Digit Input Boxes */}
-          <div style={{ display: 'flex', gap: 8, justifyContent: 'center', marginBottom: 16 }}>
-            {otpDigits.map((digit, idx) => (
-              <input
-                key={idx}
-                ref={el => { otpInputsRef.current[idx] = el; }}
-                type="text"
-                inputMode="numeric"
-                maxLength={1}
-                value={digit}
-                onChange={e => handleOtpChange(idx, e.target.value)}
-                onKeyDown={e => handleOtpKeyDown(idx, e)}
-                style={{
-                  width: 44,
-                  height: 52,
-                  textAlign: 'center',
-                  fontSize: '1.4rem',
-                  fontWeight: 800,
-                  borderRadius: 'var(--radius-md)',
-                  border: digit ? '2px solid var(--accent)' : '1px solid var(--border-medium)',
-                  background: 'var(--bg-tertiary)',
-                  color: 'var(--text-primary)',
-                }}
-              />
-            ))}
-          </div>
-
-          {otpError && (
-            <div style={{ color: 'var(--color-error)', fontSize: '0.82rem', marginBottom: 14 }}>
-              {otpError}
-            </div>
-          )}
-
-          {resendSuccess && (
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, color: 'var(--accent)', fontSize: '0.8rem', marginBottom: 14 }}>
-              <Check size={14} /> Verification code dispatched!
-            </div>
-          )}
-
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 10 }}>
-            <button
-              className="btn btn-primary btn-pill"
-              onClick={() => verifyOtpCode(otpDigits.join(''))}
-              disabled={otpDigits.join('').length !== 6}
-            >
-              Verify & Complete Signup <ArrowRight size={15} />
-            </button>
-
-            <button
-              className="btn btn-ghost btn-pill btn-sm"
-              onClick={() => sendNewOtp(pendingUser?.email, pendingUser?.displayName)}
-              disabled={resendCooldown > 0}
-            >
-              <RotateCcw size={13} />
-              {resendCooldown > 0 ? `Resend code in ${resendCooldown}s` : 'Resend Code'}
-            </button>
-
-            <button
-              className="btn btn-ghost btn-sm"
-              onClick={() => setView('form')}
-              style={{ fontSize: '0.78rem', color: 'var(--text-tertiary)' }}
-            >
-              Edit email address
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  // ── Main Auth Form ────────────────────────────────────────────
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal auth-card" style={{ maxWidth: 460 }} onClick={e => e.stopPropagation()}>
@@ -481,19 +336,16 @@ export default function AuthModal({ initialMode = 'signup', onClose, onSuccess }
                     onChange={e => setEmail(e.target.value)}
                   />
                 </div>
-                <div style={{ fontSize: '0.68rem', color: 'var(--text-tertiary)', marginTop: 2 }}>
-                  We will send a 6-digit confirmation code to verify your student email.
-                </div>
               </div>
 
               {/* Major & Graduation Year */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr', gap: 10, marginBottom: 12 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr', gap: 10, marginBottom: 10 }}>
                 <div className="form-group" style={{ marginBottom: 0 }}>
                   <label className="form-label" style={{ fontSize: '0.74rem' }}>Major</label>
                   <select
                     value={major}
                     onChange={e => setMajor(e.target.value)}
-                    className="auth-select"
+                    className="auth-input-select"
                   >
                     {MAJORS.map(m => (
                       <option key={m} value={m}>{m}</option>
@@ -506,7 +358,7 @@ export default function AuthModal({ initialMode = 'signup', onClose, onSuccess }
                   <select
                     value={gradYear}
                     onChange={e => setGradYear(e.target.value)}
-                    className="auth-select"
+                    className="auth-input-select"
                   >
                     {['2025', '2026', '2027', '2028', '2029'].map(y => (
                       <option key={y} value={y}>{y}</option>
@@ -517,19 +369,31 @@ export default function AuthModal({ initialMode = 'signup', onClose, onSuccess }
 
               {/* Password */}
               <div className="form-group" style={{ marginBottom: 16 }}>
-                <label className="form-label" style={{ fontSize: '0.74rem' }}>Password (min 6 chars)</label>
+                <label className="form-label" style={{ fontSize: '0.74rem' }}>
+                  Password (min 6 chars)
+                </label>
                 <div className="auth-input-wrapper">
                   <Lock size={15} />
                   <input
                     type="password"
                     required
                     minLength={6}
-                    placeholder="Create a strong password"
+                    placeholder="••••••••"
                     value={password}
                     onChange={e => setPassword(e.target.value)}
                   />
                 </div>
               </div>
+
+              {/* Submit Button */}
+              <button
+                type="submit"
+                className="btn btn-primary btn-pill"
+                style={{ width: '100%', padding: '13px', justifyContent: 'center', fontWeight: 700, fontSize: '0.95rem' }}
+                disabled={loading}
+              >
+                {loading ? 'Creating Account...' : 'Complete Registration'} <ArrowRight size={16} />
+              </button>
             </>
           ) : (
             <>
@@ -543,7 +407,7 @@ export default function AuthModal({ initialMode = 'signup', onClose, onSuccess }
                   <input
                     type="text"
                     required
-                    placeholder="e.g. name@gmail.com or @username"
+                    placeholder="e.g. guptanilesh417@gmail.com"
                     value={emailOrUsername}
                     onChange={e => setEmailOrUsername(e.target.value)}
                   />
@@ -551,53 +415,46 @@ export default function AuthModal({ initialMode = 'signup', onClose, onSuccess }
               </div>
 
               <div className="form-group" style={{ marginBottom: 16 }}>
-                <label className="form-label" style={{ fontSize: '0.74rem' }}>Password</label>
+                <label className="form-label" style={{ fontSize: '0.74rem' }}>
+                  Password
+                </label>
                 <div className="auth-input-wrapper">
                   <Lock size={15} />
                   <input
                     type="password"
                     required
-                    placeholder="Enter your password"
+                    placeholder="••••••••"
                     value={password}
                     onChange={e => setPassword(e.target.value)}
                   />
                 </div>
               </div>
+
+              <button
+                type="submit"
+                className="btn btn-primary btn-pill"
+                style={{ width: '100%', padding: '13px', justifyContent: 'center', fontWeight: 700, fontSize: '0.95rem' }}
+                disabled={loading}
+              >
+                {loading ? 'Signing In...' : 'Sign In'} <ArrowRight size={16} />
+              </button>
             </>
           )}
-
-          {/* Submit */}
-          <button
-            type="submit"
-            className="btn btn-primary btn-lg btn-pill"
-            style={{ width: '100%' }}
-            disabled={loading}
-          >
-            {loading ? 'Sending Verification Code...' : mode === 'signup' ? 'Get Verification Code' : 'Sign In'}
-            {!loading && <ArrowRight size={16} />}
-          </button>
         </form>
 
-        {/* Divider */}
         <div className="auth-divider">
-          <span>or explore first</span>
+          <span>OR</span>
         </div>
 
-        {/* Instant Demo */}
+        {/* Guest Demo Entry */}
         <button
           type="button"
           className="btn btn-secondary btn-pill"
-          style={{ width: '100%', fontSize: '0.84rem' }}
+          style={{ width: '100%', padding: '11px', justifyContent: 'center', fontSize: '0.85rem' }}
           onClick={handleGuestEntry}
         >
-          Instant Demo as Student Guest
+          Instant Student Guest Demo
         </button>
-
-        {/* Security Note */}
-        <div className="auth-security-note" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, marginTop: 14 }}>
-          <ShieldCheck size={14} style={{ color: 'var(--accent)' }} />
-          <span>Encrypted student authentication. Your privacy is protected.</span>
-        </div>
       </div>
     </div>
   );
