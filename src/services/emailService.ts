@@ -16,7 +16,7 @@ export const EmailService = {
   /**
    * Send an email via Resend API
    */
-  async sendEmail({ to, subject, html, from = 'CampusSparks <onboarding@resend.dev>' }: SendEmailParams): Promise<{ success: boolean; data?: any; error?: string }> {
+  async sendEmail({ to, subject, html, from = 'CampusSparks <auth@campussparks.com>' }: SendEmailParams): Promise<{ success: boolean; data?: any; error?: string }> {
     if (!RESEND_API_KEY) {
       return { success: false, error: 'Resend API key unconfigured' };
     }
