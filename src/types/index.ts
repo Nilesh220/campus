@@ -80,7 +80,8 @@ export interface ChatMessage {
   content: string;
   timestamp: string;
   isIcebreaker?: boolean;
-  type: 'text' | 'icebreaker' | 'system' | 'reveal-request';
+  type: 'text' | 'icebreaker' | 'system' | 'reveal-request' | 'reaction';
+  delivered?: boolean;
 }
 
 export interface AnonMatch {

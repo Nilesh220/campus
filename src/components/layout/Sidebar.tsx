@@ -2,7 +2,7 @@
 // Sidebar Navigation Component
 // ============================================================
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Flame, Shuffle, Users, Megaphone, MessageCircle,
   Settings, LogOut, ShieldCheck, User, Sparkles
@@ -26,6 +26,45 @@ export default function Sidebar() {
   const unreadDMs = state.conversations.reduce((sum, c) => sum + c.unreadCount, 0);
   const currentUser = state.currentUser || CURRENT_USER;
   const isAdmin = currentUser.isAdmin || currentUser.email?.toLowerCase().includes('guptanilesh417');
+
+  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+  const [isInstalled, setIsInstalled] = useState(false);
+
+  useEffect(() => {
+    const handleBeforeInstallPrompt = (e: Event) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+    };
+
+    const handleAppInstalled = () => {
+      setIsInstalled(true);
+      setDeferredPrompt(null);
+    };
+
+    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    window.addEventListener('appinstalled', handleAppInstalled);
+
+    if (window.matchMedia('(display-mode: standalone)').matches) {
+      setIsInstalled(true);
+    }
+
+    return () => {
+      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+      window.removeEventListener('appinstalled', handleAppInstalled);
+    };
+  }, []);
+
+  const handleInstallClick = async () => {
+    if (!deferredPrompt) {
+      alert('To install CampusSparks:\n• On iPhone: Tap Share -> Add to Home Screen\n• On Android/Chrome: Tap Menu -> Install App');
+      return;
+    }
+    deferredPrompt.prompt();
+    const { outcome } = await deferredPrompt.userChoice;
+    if (outcome === 'accepted') {
+      setDeferredPrompt(null);
+    }
+  };
 
   return (
     <>
@@ -61,6 +100,24 @@ export default function Sidebar() {
               )}
             </button>
           ))}
+
+          {/* PWA Install Banner Button */}
+          {!isInstalled && (
+            <button
+              className="sidebar-item pwa-install-sidebar-btn"
+              onClick={handleInstallClick}
+              style={{
+                marginTop: 8,
+                background: 'var(--accent-bg-strong)',
+                color: 'var(--accent)',
+                fontWeight: 700,
+                border: '1px dashed var(--accent)',
+              }}
+            >
+              <Sparkles size={18} />
+              Install App
+            </button>
+          )}
 
           <span className="sidebar-label" style={{ marginTop: 'auto' }}>
             {isAdmin ? 'Management' : 'Settings'}
